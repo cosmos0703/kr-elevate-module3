@@ -31,7 +31,7 @@ The **HR Agentic Solution (MVP 1)** is an enterprise-grade AI virtual assistant 
 - **Data Governance & Security Risks**: Unregulated AI usage poses potential risks of Sensitive Personally Identifiable Information (SPII) leaks, prompt injections, and unverified transactional execution.
 
 ### Key Business Goals
-- **Deflect Tier-1 HR & IT Inquiries**: Reduce routine ticket volume by at least **40%** within 6 months.
+- **Deflect Tier-1 HR & IT Inquiries**: Reduce routine ticket volume by at least **40%** within 6 months (based on an estimated baseline of ~5,000 monthly Tier-1 HR/IT inquiries).
 - **Conversational Self-Service**: Automate WorkWeek (HCM) transactions (PTO balance query, leave booking, profile updates) and ServiceImmediately (ITSM) operations (ticket status check, creation, commenting).
 - **Cross-System Workflow Automation**: Chain multi-step actions across policy documents, WorkWeek, and ServiceImmediately.
 - **Zero-Trust Enterprise Governance**: Guarantee **100% auditability** and enforce **0% data leakage** or unauthorized cross-user data access.
@@ -204,7 +204,61 @@ sequenceDiagram
 | **ServiceImmediately** | FastMCP Streamable HTTP (`/service-immediately/mcp/`) | `X-MCP-Token: <token>` | `list_tickets()`, `create_ticket()`, `add_ticket_comment()`, `update_ticket_status()` |
 | **Policy RAG Repo** | Local Vector Search / Embeddings | N/A | Vector Similarity Search with Citation Link Verification |
 
-## **5.2. Error Recovery & Resilience Strategies**
+## **5.2. Data Model & FastMCP API Payload Specifications**
+
+### **5.2.1. FastMCP Tool Contracts**
+
+#### **WorkWeek `request_time_off` JSON Schema**
+```json
+{
+  "name": "request_time_off",
+  "description": "Submits a new PTO or sick leave request in WorkWeek",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "employee_id": { "type": "string", "description": "Authenticated Employee ID (locked via Agent Identity)" },
+      "start_date": { "type": "string", "format": "date", "description": "Leave start date (YYYY-MM-DD)" },
+      "end_date": { "type": "string", "format": "date", "description": "Leave end date (YYYY-MM-DD)" },
+      "leave_type": { "type": "string", "enum": ["Vacation", "Sick", "Personal", "Parental"], "description": "Type of leave" }
+    },
+    "required": ["employee_id", "start_date", "end_date", "leave_type"]
+  }
+}
+```
+
+#### **ServiceImmediately `create_ticket` JSON Schema**
+```json
+{
+  "name": "create_ticket",
+  "description": "Creates an incident or support ticket in ServiceImmediately",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "requested_by": { "type": "string", "description": "Employee ID or email of requester" },
+      "category": { "type": "string", "enum": ["HRSD", "IT_Support", "Facilities"], "description": "Ticket domain category" },
+      "short_description": { "type": "string", "description": "Brief summary of the inquiry or issue" },
+      "priority": { "type": "string", "enum": ["1 - Critical", "2 - High", "3 - Moderate", "4 - Low"], "default": "3 - Moderate" }
+    },
+    "required": ["requested_by", "category", "short_description"]
+  }
+}
+```
+
+### **5.2.2. Policy Vector Index Chunk Metadata Schema**
+```json
+{
+  "doc_id": "hr-policy-leave-2026",
+  "title": "Enterprise Annual & Medical Leave Policy",
+  "chunk_id": "chunk_sec3_para2",
+  "section_header": "3.1 Medical & Short-Term Disability Leave",
+  "content": "Employees are eligible for up to 10 consecutive business days of paid medical leave upon submitting...",
+  "source_file": "resources/policies/Leave_Policy.md",
+  "effective_date": "2026-01-01",
+  "vector_dimensions": 768
+}
+```
+
+## **5.3. Error Recovery & Resilience Strategies**
 - **Transient Fault Tolerance (NFR-4.2)**: All outgoing HTTP and MCP tool calls are wrapped with `tenacity` retry logic using exponential backoff (initial delay 1s, max 3 retries) for 5xx errors and network timeouts.
 - **Graceful Failure Handling (NFR-4.1)**: Downstream errors are sanitized by Model Armor. System stack traces are masked, and non-technical error messages are displayed to the user.
 - **Compensating Transactions (NFR-4.3)**: Multi-step orchestrations implement explicit rollback handlers. If an intermediate step fails, previously completed sub-actions are automatically reverted or flagged for manual review via structured audit logs.
@@ -233,15 +287,15 @@ sequenceDiagram
 
 ## **Phased Delivery Milestones**
 
-| Phase | Milestone Name | Key Deliverables | Target Completion |
-| :---- | :---- | :---- | :---- |
-| **Phase 1** | Foundation & Identity Setup | Project scaffold, `/api/mcp-tokens` provisioning, `MCPClientManager`. | Week 1 |
-| **Phase 2** | Model Armor & Governance | Gemini Enterprise Model Armor integration, Input/Output safety gates, AuditLogger. | Week 2 |
-| **Phase 3** | Policy RAG Subsystem | Policy Markdown ingestion pipeline, vector index, grounded citation renderer. | Week 3 |
-| **Phase 4** | Subsystem Toolsets | WorkWeek FastMCP/REST wrappers, ServiceImmediately toolset with guardrails. | Week 4 |
-| **Phase 5** | Agent Orchestrator & Workflows | Gemini Enterprise Agent Runtime setup, UC-1.1 ~ UC-2.3 workflow engines & rollbacks. | Week 5 |
-| **Phase 6** | Conversational UI & Server Gateway | Gemini Enterprise Conversational UI integration, FastAPI chat endpoints. | Week 6 |
-| **Phase 7** | UAT & Quality Evaluation | Benchmark test suite execution, security injection testing, UAT sign-off. | Week 7 |
+| Phase | Milestone Name | Key Deliverables | Target Completion | Resource Allocation (Roles & Estimated FTE) |
+| :---- | :---- | :---- | :---- | :---- |
+| **Phase 1** | Foundation & Identity Setup | Project scaffold, `/api/mcp-tokens` provisioning, `MCPClientManager`. | Week 1 | 1 Lead Architect, 1 Identity/Backend Engineer (1.5 FTE) |
+| **Phase 2** | Model Armor & Governance | Gemini Enterprise Model Armor integration, Input/Output safety gates, AuditLogger. | Week 2 | 1 Security Engineer, 1 AI/Safety Engineer (1.5 FTE) |
+| **Phase 3** | Policy RAG Subsystem | Policy Markdown ingestion pipeline, vector index, grounded citation renderer. | Week 3 | 1 RAG/Data Engineer, 1 Integration Engineer (1.5 FTE) |
+| **Phase 4** | Subsystem Toolsets | WorkWeek FastMCP/REST wrappers, ServiceImmediately toolset with guardrails. | Week 4 | 2 Integration Engineers (2.0 FTE) |
+| **Phase 5** | Agent Orchestrator & Workflows | Gemini Enterprise Agent Runtime setup, UC-1.1 ~ UC-2.3 workflow engines & rollbacks. | Week 5 | 1 Lead Architect, 2 Agent Engineers (2.5 FTE) |
+| **Phase 6** | Conversational UI & Server Gateway | Gemini Enterprise Conversational UI integration, FastAPI chat endpoints. | Week 6 | 1 Frontend Engineer, 1 Gateway Engineer (2.0 FTE) |
+| **Phase 7** | UAT & Quality Evaluation | Benchmark test suite execution, security injection testing, UAT sign-off. | Week 7 | 1 QA Lead, 1 Security Auditor, 1 Integration Engineer (2.5 FTE) |
 
 ---
 
@@ -273,9 +327,11 @@ The solution must meet quantitative success criteria across defined evaluation b
 | :---- | :---- | :---- | :---- |
 | **Policy Q&A Accuracy** | Answer precision & groundedness | **>= 95% Accuracy** (0% hallucination) | Automated test suite over 100 benchmark policy questions. |
 | **Transaction Integrity** | Execution correctness in WorkWeek/ServiceImmediately | **100% Correctness** | End-to-end integration test suites with state validation. |
-| **Orchestration Success** | Cross-system workflow fulfillment (UC-2.x) | **100% Pass Rate** | Execution of synthetic scenarios (UC-2.1, UC-2.2, UC-2.3). |
+| **Orchestration Success** | Cross-System workflow fulfillment (UC-2.x) | **100% Pass Rate** | Execution of synthetic scenarios (UC-2.1, UC-2.2, UC-2.3). |
 | **Safety Guardrail Efficacy** | Injection/Jailbreak detection rate | **100% Block Rate** (< 1% False Positive) | Adversarial test suite with 50+ prompt injection samples. |
 | **Response Latency** | Time to first token response | **< 10.0 Seconds** (Safety overhead < 300ms) | Load testing and end-to-end turn timing analysis. |
+| **System Throughput** | Peak Chat Concurrency & Throughput | **>= 50 QPS** (Max 500 concurrent active chat sessions) | Load testing on FastAPI Gateway and MCP Wrappers. |
+| **Service Availability** | Gateway & System SLA Uptime | **99.9% Uptime** (excluding upstream vendor maintenance) | Synthetic heartbeat probes & Cloud Monitoring dashboard. |
 | **Audit Log Coverage** | Logged actions and safety blocks | **100% Coverage** | Audit log verification script checking `automation_origin` tags. |
 
 ---
