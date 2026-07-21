@@ -61,7 +61,7 @@ The **HR Agentic Solution (MVP 1)** is an enterprise-grade AI virtual assistant 
 
 ## **1.3. Target Architecture Overview**
 
-The solution leverages **Gemini Enterprise** core infrastructure components to deliver end-to-end security, runtime orchestration, and seamless user interaction.
+The solution leverages core infrastructure components of the **Gemini Enterprise Agent Platform**, specifically integrating **Gemini Enterprise Agent Gateway**, **Agent Identity**, **Agent Runtime**, and **Model Armor** to deliver centralized governance, secure API routing, runtime orchestration, and seamless user interaction.
 
 ```mermaid
 flowchart TD
@@ -69,14 +69,18 @@ flowchart TD
 
     subgraph Gemini Enterprise Managed Platform
         UI <--> ModelArmor[Gemini Enterprise Model Armor<br/>Input/Output Guardrails & SPII Masking]
-        ModelArmor <--> Identity[Gemini Enterprise Agent Identity<br/>IAM Delegation & MCP Token Provisioning]
+        ModelArmor <--> Identity[Gemini Enterprise Agent Identity<br/>OIDC Token Delegation & RBAC Parameter Locks]
         Identity <--> Runtime[Gemini Enterprise Agent Runtime<br/>Gemini 2.5/3.5 Flash Orchestrator]
     end
 
+    subgraph Governance & Proxy Gateway Layer
+        Runtime <--> Gateway[Gemini Enterprise Agent Gateway<br/>Centralized Routing, MCP Auth & Policy Enforcement]
+    end
+
     subgraph Agentic Orchestration & Sub-Agents
-        Runtime <--> PolicyAgent[Policy RAG Sub-Agent]
-        Runtime <--> WorkWeekAgent[WorkWeek Sub-Agent & REST Wrapper]
-        Runtime <--> ITSMAgent[ServiceImmediately Sub-Agent]
+        Gateway <--> PolicyAgent[Policy RAG Sub-Agent]
+        Gateway <--> WorkWeekAgent[WorkWeek Sub-Agent & REST Wrapper]
+        Gateway <--> ITSMAgent[ServiceImmediately Sub-Agent]
     end
 
     subgraph Enterprise Knowledge & Backend Services
@@ -86,18 +90,19 @@ flowchart TD
         ITSMAgent -- FastMCP (X-MCP-Token) --> SI_MCP[ServiceImmediately MCP Server<br/>/service-immediately/mcp/]
     end
 
-    subgraph Governance & Audit
-        ModelArmor -. Audit Events .-> AuditStore[(Audit & Compliance Store)]
-        Runtime -. Execution Traces .-> AuditStore
+    subgraph Governance & Audit Store
+        ModelArmor -. Audit Events .-> AuditStore[(Cloud Spanner Audit & Compliance Store)]
+        Gateway -. Tool Execution Traces .-> AuditStore
     end
 ```
 
 ### Core Architecture Layers
 1. **Presentation Layer**: **Gemini Enterprise Conversational UI** provides an enterprise-ready, accessible, and responsive chat interface.
-2. **Security & Governance Gate**: **Gemini Enterprise Model Armor** performs pre-execution input scanning (blocking direct prompt injections, jailbreaks, off-topic requests in < 300ms) and post-execution output scanning (redacting SPII like SSN, phone numbers, and addresses).
-3. **Identity Layer**: **Gemini Enterprise Agent Identity** manages user identity context, token delegation (`X-MCP-Token` via `/api/mcp-tokens`), and RBAC parameter locks (`employee_id == authenticated_user_id`).
-4. **Agent Runtime Layer**: **Gemini Enterprise Agent Runtime** executes the multi-agent orchestration, intent routing, temporal date resolution (`python-dateutil`), and compensating transaction handling.
-5. **Backend Tool Integration Layer**: Connects statelessly to WorkWeek FastMCP/REST APIs and ServiceImmediately FastMCP tools.
+2. **Security & Safety Gate**: **Gemini Enterprise Model Armor** performs pre-execution input scanning (blocking direct prompt injections, jailbreaks, off-topic requests in < 300ms) and post-execution output scanning (redacting SPII like SSN, phone numbers, and addresses).
+3. **Identity Layer**: **Gemini Enterprise Agent Identity** manages user identity context, OAuth2/OIDC token delegation (`X-MCP-Token`), and RBAC parameter locks (`employee_id == authenticated_user_id`).
+4. **Agent Runtime Layer**: **Gemini Enterprise Agent Runtime** executes multi-agent orchestration, intent routing, temporal date resolution (`python-dateutil`), and compensating transaction handling.
+5. **Agent Gateway & Proxy Layer**: **Gemini Enterprise Agent Gateway** acts as the centralized management, security proxy, and governance hub. It enforces API rate limiting, handles protocol translation, inspects FastMCP tool calls, and routes authenticated requests statelessly between the Agent Runtime and backend subsystem tools.
+6. **Backend Tool Integration Layer**: Connects statelessly to WorkWeek FastMCP/REST APIs and ServiceImmediately FastMCP tools via Agent Gateway proxying.
 
 ---
 
@@ -175,6 +180,13 @@ sequenceDiagram
 - **WorkWeek Sub-Agent**: Wraps FastMCP tools (`get_employee_balances`, `request_time_off`, `update_personal_info`) and REST profile calls. Auto-merges unchanged fields during contact updates.
 - **ServiceImmediately Sub-Agent**: Wraps FastMCP ticket actions, enforcing duplicate prevention and ticket state machine constraints.
 
+## **3.3. Asynchronous Processing & Long-Running Tasks**
+
+For long-running background actions (e.g., bulk leave entitlement updates, asynchronous HRSD escalation workflows, or multi-document policy ingestion jobs):
+- **Decoupled Messaging & Queueing**: Long-running requests are published as event payloads to **Google Cloud Pub/Sub** topics.
+- **Task Scheduling & Retries**: **Google Cloud Tasks** dispatches asynchronous jobs to dedicated background worker instances with exponential retry policies, dead-letter queues (DLQ), and execution timeouts (max 30 mins).
+- **Callback State Notification**: Upon task completion, workers update session state via the Session Hydration Store and publish progress notifications back to the Gemini Enterprise Conversational UI via WebSocket/SSE event push.
+
 ---
 
 # **4. Security, Governance & Identity**
@@ -184,12 +196,49 @@ sequenceDiagram
 - **Context Scanning**: Scans retrieved RAG policy chunks and downstream MCP payload responses for indirect prompt injection vectors before feeding them to the Agent Runtime.
 - **Output Guardrail & SPII Redactor**: Automatically detects and redacts Sensitive Personally Identifiable Information (SSN, credit cards, personal phone numbers, home addresses) from conversational memory and log outputs (FR-1.4, FR-3.4).
 
-## **4.2. Gemini Enterprise Agent Identity & RBAC**
-- **User Delegation**: User authentication propagates via OAuth2/OIDC. Session provisioning creates ephemeral `X-MCP-Token` credentials for FastMCP calls.
-- **Parameter Lock Interceptor**: Hard-codes and locks the `employee_id` parameter in all tool executions to match the authenticated caller's verified identity, preventing cross-user data access (FR-1.5).
+## **4.2. Gemini Enterprise Agent Identity & Agent Gateway Governance**
+- **User Identity Delegation**: User authentication propagates seamlessly via OAuth2/OIDC. Session provisioning creates ephemeral `X-MCP-Token` credentials passed through **Gemini Enterprise Agent Gateway** for backend FastMCP tool authorization.
+- **Parameter Lock Interceptor**: Hard-codes and locks the `employee_id` parameter in all tool executions to match the authenticated caller's verified IAM identity, preventing cross-user data access (FR-1.5).
+- **Gateway Policy Enforcement**: Agent Gateway monitors tool execution frequency, enforces per-user rate limits, logs trace telemetry, and validates tool parameters prior to backend execution.
 
-## **4.3. Audit & Compliance Engine**
-- **100% Audit Logging**: Captures `trace_id`, `session_id`, `user_id`, `automation_origin`, `tool_name`, `input_parameters`, and `execution_status` for all actions, including blocked injection attempts (FR-1.2, NFR-1.2).
+## **4.3. Multi-Role RBAC Permissions Matrix**
+
+| Role Name | Policy RAG Query | View Own Profile/PTO | Submit Own PTO Request | Update Personal Info | View Team Profiles | Create/Update IT Tickets | Access Audit Logs |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Employee (Standard)** | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed | ❌ Denied | ✅ Allowed | ❌ Denied |
+| **HR Specialist / Manager** | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed | ❌ Denied |
+| **IT Helpdesk Analyst** | ✅ Allowed | ✅ Allowed | ❌ Denied | ❌ Denied | ❌ Denied | ✅ Full Access | ❌ Denied |
+| **Security & Compliance Auditor** | ✅ Allowed | ❌ Denied | ❌ Denied | ❌ Denied | ❌ Denied | ❌ Denied | ✅ Full Read-Only |
+
+## **4.4. Data Protection, Secrets Vaulting & Encryption**
+- **Secrets Vaulting**: Sensitive API credentials, private certificates, and FastMCP tokens are managed securely in **Google Secret Manager** with automatic rotation and IAM access controls.
+- **Encryption-in-Transit**: All internal and external network communication is enforced via TLS 1.3 with strict cipher suites.
+- **Encryption-at-Rest**: All persistent storage layers (Firestore, Cloud Spanner, Vector Search index, and Cloud Storage buckets) are encrypted using Customer-Managed Encryption Keys (**CMEK**) backed by **Google Cloud KMS** (AES-256).
+
+## **4.5. Audit & Compliance Engine & Lifecycle Management**
+
+### **4.5.1. Audit Database Engine & Relational Schema**
+Operational audit logs are stored in **Google Cloud Spanner** (multi-region, ACID-compliant transactional store) for real-time compliance tracking.
+
+```sql
+CREATE TABLE audit_logs (
+    log_id STRING(36) NOT NULL,
+    trace_id STRING(64) NOT NULL,
+    session_id STRING(64) NOT NULL,
+    user_id STRING(64) NOT NULL,
+    timestamp TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true),
+    automation_origin STRING(32) NOT NULL, -- 'USER_CHAT', 'AGENT_ORCHESTRATOR', 'SUB_AGENT'
+    tool_name STRING(64),
+    input_parameters_json JSON,
+    execution_status STRING(32) NOT NULL, -- 'SUCCESS', 'BLOCKED_BY_GUARDRAIL', 'SYSTEM_ERROR', 'ROLLED_BACK'
+    spii_redacted_count INT64 NOT NULL DEFAULT (0),
+    model_armor_verdict STRING(32)
+) PRIMARY KEY (log_id);
+```
+
+### **4.5.2. Audit Data Retention & Archiving Policy**
+- **Active Hot Tier (90 Days)**: Audit records remain in **Cloud Spanner** for 90 days to support real-time compliance dashboards, security investigations, and active operational tracing.
+- **Cold Storage Archive (7 Years)**: Automated nightly export jobs transfer audit records older than 90 days to **Google Cloud Storage (Coldline/Archive Class)** and **BigQuery** for long-term historical analysis and regulatory compliance (7-year mandatory enterprise retention policy).
 
 ---
 
@@ -258,34 +307,84 @@ sequenceDiagram
 }
 ```
 
-## **5.3. Error Recovery & Resilience Strategies**
+## **5.3. Conversational State Management & Session Hydration**
+- **Primary Storage Engine**: Conversational history and multi-turn slot state are persisted in **Google Cloud Firestore** (NoSQL document store) with low-latency document reads.
+- **In-Memory Session Cache**: **Cloud Memorystore (Redis)** acts as an in-memory caching tier to achieve sub-15ms session state hydration during active conversational turns.
+- **Hydration & Pruning Lifecycle**:
+  1. **Turn Hydration**: Upon receiving a user message, the Agent Runtime hydrates the last $N=10$ conversation turns, user context, and active intent state from Redis into memory.
+  2. **Context Window Optimization**: Older turns are summarized into compact semantic memory to prevent prompt context bloat.
+  3. **Turn Persistence**: Once the final turn response is emitted and Model Armor SPII redaction completes, updated state is asynchronously committed back to Redis and Firestore.
+
+## **5.4. Error Recovery & Resilience Strategies**
+
 - **Transient Fault Tolerance (NFR-4.2)**: All outgoing HTTP and MCP tool calls are wrapped with `tenacity` retry logic using exponential backoff (initial delay 1s, max 3 retries) for 5xx errors and network timeouts.
 - **Graceful Failure Handling (NFR-4.1)**: Downstream errors are sanitized by Model Armor. System stack traces are masked, and non-technical error messages are displayed to the user.
 - **Compensating Transactions (NFR-4.3)**: Multi-step orchestrations implement explicit rollback handlers. If an intermediate step fails, previously completed sub-actions are automatically reverted or flagged for manual review via structured audit logs.
+
+### **Structured Error Handling Matrix**
+
+| Failure Scenario | Technical Root Cause | Automatic System Fallback Action | User-Facing Error Message |
+| :--- | :--- | :--- | :--- |
+| **Model Armor SPII Block** | User input or model output contains unmasked Sensitive PII | Intercept payload; redact SPII or abort turn if malicious | *"For your protection, sensitive personal data was detected and masked. Please verify your input."* |
+| **WorkWeek FastMCP 500 Error** | WorkWeek API service temporary outage or 5xx response | Apply exponential retry (3x via `tenacity`); fallback to cached profile if read-only | *"We are currently unable to connect to WorkWeek. Your request has been logged and will be retried shortly."* |
+| **ServiceImmediately Timeout** | Network timeout during ticket creation (> 5.0s) | Trigger compensating transaction (cancel booked leave in WorkWeek via REST); log audit alert | *"Unable to finalize your IT ticket. Your time-off booking has been automatically reverted to maintain consistency."* |
+| **Vector DB Unreachable** | Policy RAG vector index node connection failure | Fallback to keyword-based search index; append disclaiming citation note | *"Unable to perform vector policy lookup. Providing answer from fallback policy index."* |
+| **Rate Limit Exceeded** | Agent Gateway user rate limit exceeded (> 30 requests/min) | Return HTTP 429 via Agent Gateway; enforce client backoff header | *"You have sent too many requests in a short time. Please wait a moment before asking again."* |
 
 ---
 
 # **6. Cost Estimation & FinOps**
 
-## **Key Cost Drivers**
+## **6.1. Key Cost Drivers**
 1. **Gemini Enterprise Agent Runtime Token Consumption**: Primary cost factor based on input/output token volume processed by Gemini 2.5/3.5 Flash models during conversational turns and RAG context evaluation.
 2. **Gemini Enterprise Model Armor Inspection Calls**: Per-turn API request cost for streaming input/output safety inspection and SPII redaction.
 3. **Vector Search Index & Storage**: Monthly hosting and index search costs for HR policy embeddings.
-4. **Backend Application Hosting**: Compute instance costs for running FastAPI gateways and MCP servers.
+4. **Backend Application Hosting**: Compute instance costs for running FastAPI gateways, Agent Gateway proxies, and FastMCP servers.
 
-## **FinOps & Cost Optimization Strategies**
-- **Prompt Optimization & Token Caching**: Cache system instructions and static policy context to minimize input token processing costs.
+## **6.2. Quantitative Cost Estimates & Scaling Cost Model**
+
+*Baseline Volume Assumption: 5,000 monthly inquiries (~15,000 conversational turns total).*
+
+| Cost Component | Pricing Unit / Rate | Monthly Consumption Estimate | Estimated Monthly Cost (USD) |
+| :--- | :--- | :--- | :---: |
+| **Gemini 2.5 Flash Tokens** | $0.075 / 1M Input Tokens<br/>$0.30 / 1M Output Tokens | 45M Input Tokens<br/>7.5M Output Tokens | $3.38<br/>$2.25 |
+| **Model Armor Safety Inspection** | $0.10 / 1,000 streaming API requests | 15,000 turns × 2 (in/out) = 30,000 calls | $3.00 |
+| **Vector Search Index Hosting** | Standard Vector Search Endpoint ($0.07/hr) | 730 hours/month | $51.10 |
+| **Cloud Spanner & Storage Audit** | Spanner 0.1 Processing Unit + GCS Archive | 90 days active DB + GCS Coldline | $45.00 |
+| **Cloud Run & FastAPI Gateways** | 2 vCPU / 4GB RAM autoscale (0 to 5 nodes) | ~100 compute hours active | $25.00 |
+| **Estimated Total Monthly Cost** | | **5,000 Inquiries Baseline** | **~$129.73 / month** |
+
+*Scaling Projection: Scaling to 50,000 inquiries/month (~150,000 turns) scales linearly to approximately **~$850.00 / month**, demonstrating high cost-efficiency (cost per ticket deflection < $0.05).*
+
+## **6.3. FinOps & Cost Optimization Strategies**
+- **Prompt Optimization & Token Caching**: Cache system instructions and static policy context to minimize input token processing costs by up to 50%.
 - **Targeted Model Selection**: Use Gemini 2.5 Flash for routine intent classification and entity extraction, reserving higher-tier reasoning for complex cross-system planning.
 
 ---
 
 # **7. Deployment & Delivery Plan**
 
-## **Deployment Architecture & Environments**
+## **7.1. Deployment Architecture & Environments**
 - **Infrastructure as Code (IaC)**: Environment provisioning via Terraform scripts ensuring identical staging and production setups.
 - **Environment Separation**: Development, Staging (UAT), and Production environments with isolated database instances and configuration profiles.
 
-## **Phased Delivery Milestones**
+## **7.2. Automated CI/CD Pipeline**
+
+The deployment pipeline is automated via **GitHub Actions** and **Google Cloud Build**, enforcing rigorous quality gates before promotion:
+
+```
+[Code Push / PR] ──→ [1. Lint & Static Analysis] ──→ [2. Unit & MCP Contract Tests]
+                                                                  │
+[Production Deploy] ◄── [5. Terraform Apply] ◄── [4. Security Scan] ◄── [3. Model Armor Test]
+```
+
+1. **Lint & Static Code Analysis**: Runs `ruff`, `mypy`, and `markdownlint` to ensure code formatting and type safety.
+2. **Unit & FastMCP Contract Testing**: Executes `pytest` suites against mock WorkWeek and ServiceImmediately MCP servers to validate schema compliance.
+3. **Model Armor Adversarial Scan**: Runs automated adversarial prompt injection test suites (50+ attack samples) to verify guardrail block rates.
+4. **Terraform Security & IaC Validation**: Scans Terraform configuration files using `tfsec` and `checkov` before running `terraform plan`.
+5. **Automated Promotion & Deployment**: Applies Terraform IaC to Staging/UAT automatically upon merge to `main`, requiring manual approval gate for Production deployment.
+
+## **7.3. Phased Delivery Milestones**
 
 | Phase | Milestone Name | Key Deliverables | Target Completion | Resource Allocation (Roles & Estimated FTE) |
 | :---- | :---- | :---- | :---- | :---- |
@@ -345,3 +444,19 @@ The solution must meet quantitative success criteria across defined evaluation b
 | **AQ-01** | Confirmation of Gemini Enterprise Model Armor token rate limits for high-concurrency peak hours. | Under Review | Donguk Lee | 2026-07-25 |
 | **AQ-02** | Validation of WorkWeek REST DELETE endpoint behavior when cancelling already-approved leave. | Approved | Changjoon Kim | 2026-07-22 |
 | **AQ-03** | Finalization of policy document update sync frequency (FR-5.5 Document Sync Latency SLA). | Open | Inhye Park | 2026-07-27 |
+
+---
+
+# **11. Appendix: Business Stakeholder AI Glossary & Executive Guide**
+
+To assist HR Leadership, Business Stakeholders, and non-technical reviewers, this section translates specialized technical and AI concepts into clear business terms and analogies.
+
+| Specialized AI / Technical Term | Non-Technical Business Definition | Real-World Business Analogy |
+| :--- | :--- | :--- |
+| **Gemini Enterprise Agent Gateway** | A centralized digital receptionist and security guard that safely routes user requests to HR & IT systems. | **Security Desk & Receptionist**: Checks your ID badge, verifies what rooms you are allowed to enter, and guides you to the right department. |
+| **Gemini Enterprise Model Armor** | A real-time safety and privacy filter that screens incoming messages and redacts private employee data. | **Confidentiality Shredder & Scanner**: Automatically blacks out Sensitive PII (like SSNs) on documents before anyone else can view them. |
+| **Gemini Enterprise Agent Identity** | A secure identity delegation mechanism ensuring the AI only performs actions the logged-in user is authorized to do. | **Digital ID Badge & Delegated Pass**: Ensures the AI can only access *your* PTO balance, never another colleague's profile. |
+| **FastMCP (Model Context Protocol)** | A standardized software plug that allows the AI agent to interact directly with systems like WorkWeek and ServiceImmediately. | **Universal Travel Adaptor**: Enables different devices and power outlets from different countries to connect effortlessly. |
+| **RAG (Retrieval-Augmented Generation)** | A technique where the AI reads official, approved HR policy documents to generate factual answers with citations. | **Open-Book Exam**: Instead of guessing from memory, the assistant opens the exact HR policy handbook and quotes the specific page. |
+| **Prompt Injection Guardrail** | An anti-tamper security layer that blocks attempts to trick the AI into ignoring company rules or leaking data. | **Fraud Detection System**: Detects sneaky or deceptive language designed to trick customer service into giving unauthorized discounts. |
+| **Compensating Transaction** | An automatic safety feature that undoes a previous step if a multi-step request fails halfway through. | **Automatic Eraser / Transaction Undo**: If ordering a laptop succeeds but shipping label creation fails, the laptop order is automatically cancelled so no ghost orders remain. |
