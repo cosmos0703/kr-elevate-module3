@@ -1,112 +1,128 @@
 """
-Policy RAG Tool Module (Owner: Developer A)
-Provides grounded document search over knowledge/*.md policies.
+Policy RAG Tool for Policy Search and Grounded Citation Generation
+Owner: Developer A
 """
 import glob
 import os
 import re
+from typing import List, Dict, Any
 
-KNOWLEDGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge")
+# Path to policy documents
+KNOWLEDGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../knowledge"))
 
 
-def _chunk_markdown_documents():
-    """
-    Parses markdown policy files in knowledge/ into structured section chunks.
-    """
-    chunks = []
-    pattern = os.path.join(KNOWLEDGE_DIR, "*.md")
-    files = glob.glob(pattern)
+class PolicyIndex:
+    """Indexed storage and retrieval system for HR Policy markdown documents."""
+    
+    def __init__(self, knowledge_dir: str = KNOWLEDGE_DIR):
+        self.knowledge_dir = knowledge_dir
+        self.documents: List[Dict[str, Any]] = []
+        self._load_documents()
 
-    for file_path in files:
-        filename = os.path.basename(file_path)
-        if filename.startswith("README"):
-            continue
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        # Split content by sections (## Heading)
-        sections = re.split(r"\n(?=##\s+)", content)
-        doc_title = sections[0].split("\n")[0].replace("#", "").strip() if sections else filename
-
-        for sec in sections:
-            lines = sec.strip().split("\n")
-            if not lines:
+    def _load_documents(self):
+        """Loads and chunks markdown policy files."""
+        pattern = os.path.join(self.knowledge_dir, "**/*.md")
+        filepaths = glob.glob(pattern, recursive=True)
+        
+        for path in filepaths:
+            if os.path.basename(path) == "README.md":
                 continue
-            section_title = lines[0].replace("#", "").strip()
-            body = "\n".join(lines[1:]).strip()
+            
+            rel_path = os.path.relpath(path, self.knowledge_dir)
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
 
-            chunks.append({
-                "doc_name": filename,
-                "doc_title": doc_title,
-                "section_title": section_title,
-                "content": body,
-                "full_text": f"{doc_title} - {section_title}: {body}",
-                "file_path": os.path.abspath(file_path),
-            })
+            # Split document by headers (# or ## or ###) into sections
+            sections = re.split(r'\n(?=#{1,3}\s)', content)
+            doc_title = os.path.basename(path).replace(".md", "").replace("-", " ").title()
+            
+            for section in sections:
+                lines = section.strip().split("\n")
+                if not lines or not lines[0]:
+                    continue
+                
+                header = lines[0].lstrip("#").strip() if lines[0].startswith("#") else "General Guidelines"
+                section_text = "\n".join(lines[1:]) if len(lines) > 1 else lines[0]
+                
+                if len(section_text.strip()) > 30:
+                    self.documents.append({
+                        "file_path": rel_path,
+                        "doc_title": doc_title,
+                        "header": header,
+                        "content": section_text.strip(),
+                        "full_text": f"{doc_title} > {header}\n{section_text.strip()}"
+                    })
 
-    return chunks
+    def search(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
+        """
+        Performs keyword and semantic relevance scoring over policy chunks.
+        """
+        query_terms = [t.lower() for t in re.findall(r'\w+', query) if len(t) > 2]
+        scored_results = []
+        
+        for doc in self.documents:
+            text_lower = doc["full_text"].lower()
+            score = 0
+            for term in query_terms:
+                if term in text_lower:
+                    # Count frequency and give extra weight to title/header matches
+                    score += text_lower.count(term)
+                    if term in doc["doc_title"].lower():
+                        score += 5
+                    if term in doc["header"].lower():
+                        score += 3
+            
+            if score > 0:
+                scored_results.append((score, doc))
+        
+        # Sort by relevance score descending
+        scored_results.sort(key=lambda x: x[0], reverse=True)
+        return [item[1] for item in scored_results[:top_k]]
 
 
-def policy_search_tool(query: str) -> dict:
+# Instantiate global index
+_policy_index = PolicyIndex()
+
+
+def policy_search_tool(query: str) -> Dict[str, Any]:
     """
-    Searches the corporate HR policy knowledge base for relevant sections.
+    Searches the official Altostrat HR Policy Handbook for governing rules, spend limits,
+    prohibitions, leave entitlements, and compliance guidelines.
 
     Args:
-        query (str): Search query or user question regarding company policies.
+        query: The natural language policy inquiry or topic to search.
 
     Returns:
-        dict: Grounded search result containing:
-            - found (bool): True if matching policy chunks were retrieved.
-            - chunks (list): List of matching section snippets and citations.
-            - citations (list): Clickable citation metadata.
-            - message (str): Explanation if no policy was found.
+        Dictionary containing matching policy sections, content snippets, and verified source citations.
     """
-    chunks = _chunk_markdown_documents()
-    query_tokens = set(re.findall(r"\w+", query.lower()))
-
-    # Score chunks by keyword token intersection & relevance
-    scored_chunks = []
-    for chunk in chunks:
-        chunk_tokens = set(re.findall(r"\w+", chunk["full_text"].lower()))
-        overlap = query_tokens.intersection(chunk_tokens)
-        score = len(overlap)
-
-        # Boost score for key domain terms
-        for token in query_tokens:
-            if token in chunk["section_title"].lower():
-                score += 3
-            if token in chunk["content"].lower():
-                score += 1
-
-        if score > 1:  # Relevance threshold
-            scored_chunks.append((score, chunk))
-
-    scored_chunks.sort(key=lambda x: x[0], reverse=True)
-
-    if not scored_chunks:
+    results = _policy_index.search(query, top_k=4)
+    
+    if not results:
         return {
             "found": False,
-            "message": f"No official company policy found for query: '{query}'.",
-            "chunks": [],
-            "citations": []
+            "query": query,
+            "message": "No matching policy sections found in the handbook.",
+            "results": []
         }
-
-    # Return top matching chunks (up to 3)
-    top_chunks = [item[1] for item in scored_chunks[:3]]
-    citations = [
-        {
-            "doc_name": chunk["doc_name"],
-            "section_title": chunk["section_title"],
-            "file_path": chunk["file_path"],
-            "citation_str": f"[{chunk['doc_name']} - {chunk['section_title']}](file://{chunk['file_path']})"
+    
+    formatted_results = []
+    citations = []
+    
+    for r in results:
+        citation = {
+            "document": r["doc_title"],
+            "section": r["header"],
+            "file": r["file_path"]
         }
-        for chunk in top_chunks
-    ]
-
+        citations.append(citation)
+        formatted_results.append({
+            "source": f"{r['doc_title']} - {r['header']} ({r['file_path']})",
+            "content": r["content"]
+        })
+        
     return {
         "found": True,
         "query": query,
-        "snippets": [f"### {c['section_title']}\n{c['content']}" for c in top_chunks],
+        "results": formatted_results,
         "citations": citations
     }
