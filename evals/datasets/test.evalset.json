@@ -1,0 +1,47 @@
+{
+  "eval_set_id": "test_set_1",
+  "name": "test_set",
+  "description": "Verification test set for ITSM agent tools",
+  "eval_cases": [
+    {
+      "eval_id": "check_vpn_ticket_status",
+      "session_input": {
+        "app_name": "agent",
+        "user_id": "EMP-1004",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "What is the status of my incident tickets?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Your VPN connection ticket INC-54321 is currently In Progress."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "list_tickets_tool",
+                "args": {
+                  "requested_by": "EMP-1004"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ]
+    }
+  ]
+}
