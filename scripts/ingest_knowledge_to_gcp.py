@@ -85,6 +85,35 @@ def trigger_discovery_engine_import(dry_run: bool = False) -> bool:
 
     try:
         from google.cloud import discoveryengine_v1 as discoveryengine
+        from google.api_core.exceptions import NotFound
+
+        # Ensure DataStore exists before importing
+        ds_client = discoveryengine.DataStoreServiceClient()
+        parent_collection = f"projects/{GOOGLE_CLOUD_PROJECT}/locations/{VERTEX_SEARCH_LOCATION}/collections/default_collection"
+        data_store_path = ds_client.data_store_path(
+            project=GOOGLE_CLOUD_PROJECT,
+            location=VERTEX_SEARCH_LOCATION,
+            data_store=VERTEX_SEARCH_DATASTORE_ID,
+        )
+        try:
+            ds_client.get_data_store(name=data_store_path)
+            logger.info(f"Using existing Discovery Engine DataStore: {VERTEX_SEARCH_DATASTORE_ID}")
+        except Exception:
+            logger.info(f"DataStore '{VERTEX_SEARCH_DATASTORE_ID}' not found. Creating Discovery Engine DataStore...")
+            data_store = discoveryengine.DataStore(
+                display_name="Altostrat HR Policy Datastore",
+                industry_vertical=discoveryengine.IndustryVertical.GENERIC,
+                solution_types=[discoveryengine.SolutionType.SOLUTION_TYPE_SEARCH],
+                content_config=discoveryengine.DataStore.ContentConfig.CONTENT_REQUIRED,
+            )
+            op = ds_client.create_data_store(
+                parent=parent_collection,
+                data_store=data_store,
+                data_store_id=VERTEX_SEARCH_DATASTORE_ID,
+            )
+            logger.info(f"DataStore creation operation started: {op.operation.name}")
+            op.result()
+            logger.info(f"Successfully created DataStore '{VERTEX_SEARCH_DATASTORE_ID}'")
 
         client = discoveryengine.DocumentServiceClient()
         parent = client.branch_path(
