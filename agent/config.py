@@ -20,9 +20,9 @@ VERTEX_RAG_CORPUS_ID = os.getenv("VERTEX_RAG_CORPUS_ID", "")
 RAG_ENGINE_TYPE = os.getenv("RAG_ENGINE_TYPE", "vertex_search")  # Options: vertex_search | vertex_rag_corpus | vertex_vector_search | local_fallback
 
 # FastMCP Base Endpoints
-WORKWEEK_MCP_URL = os.getenv("WORKWEEK_MCP_URL", "http://localhost:8001/work-week/mcp/")
-WORKWEEK_REST_URL = os.getenv("WORKWEEK_REST_URL", "http://localhost:8001/work-week/api/")
-ITSM_MCP_URL = os.getenv("ITSM_MCP_URL", "http://localhost:8002/service-immediately/mcp/")
+WORKWEEK_MCP_URL = os.getenv("WORKWEEK_MCP_URL", "https://mock-saas.aishprabhat.demo.altostrat.com/work-week/mcp/")
+WORKWEEK_REST_URL = os.getenv("WORKWEEK_REST_URL", "https://mock-saas.aishprabhat.demo.altostrat.com/work-week/api/")
+ITSM_MCP_URL = os.getenv("ITSM_MCP_URL", "https://mock-saas.aishprabhat.demo.altostrat.com/service-immediately/mcp/")
 
 # Performance & Guardrail Limits
 MODEL_ARMOR_LATENCY_BUDGET_MS = 300
