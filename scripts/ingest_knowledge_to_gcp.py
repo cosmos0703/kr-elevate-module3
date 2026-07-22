@@ -51,9 +51,16 @@ def upload_to_gcs(bucket_name: str, files: list, dry_run: bool = False) -> bool:
 
     try:
         from google.cloud import storage
+        from google.api_core.exceptions import NotFound
 
         client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
-        bucket = client.bucket(bucket_name)
+        try:
+            bucket = client.get_bucket(bucket_name)
+            logger.info(f"Using existing GCS bucket: gs://{bucket_name}")
+        except NotFound:
+            logger.info(f"Bucket gs://{bucket_name} not found. Creating new bucket in location 'us-central1'...")
+            bucket = client.create_bucket(bucket_name, location="us-central1")
+            logger.info(f"Successfully created bucket gs://{bucket_name}")
 
         for f in files:
             rel = os.path.relpath(f, KNOWLEDGE_DIR).replace("\\", "/")
