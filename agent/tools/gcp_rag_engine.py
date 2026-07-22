@@ -159,6 +159,9 @@ class GoogleCloudRAGEngine:
                 client_options = {"api_endpoint": f"{self.location}-discoveryengine.googleapis.com"}
 
             client = discoveryengine.SearchServiceClient(client_options=client_options)
+            logger.info(f"🔍 [GCP VERTEX SEARCH EXECUTION] Project: {self.project_id} | Location: {self.location} | DataStore: {self.datastore_id} | Query: '{query}'")
+            print(f"\n🌐 [GCP VERTEX SEARCH API CALL] Project='{self.project_id}' Datastore='{self.datastore_id}' Location='{self.location}' Query='{query}'", flush=True)
+
             serving_config = client.serving_config_path(
                 project=self.project_id,
                 location=self.location,
