@@ -33,7 +33,7 @@ class PolicyIndex:
         self._load_documents()
 
     def _load_documents(self):
-        """Loads and chunks markdown policy files."""
+        """Loads and chunks markdown policy files accurately."""
         pattern = os.path.join(self.knowledge_dir, "**/*.md")
         filepaths = glob.glob(pattern, recursive=True)
 
@@ -41,7 +41,7 @@ class PolicyIndex:
             if os.path.basename(path) == "README.md":
                 continue
 
-            rel_path = os.path.relpath(path, self.knowledge_dir)
+            rel_path = os.path.relpath(path, self.knowledge_dir).replace("\\", "/")
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
 
@@ -53,8 +53,12 @@ class PolicyIndex:
                 if not lines or not lines[0]:
                     continue
 
-                header = lines[0].lstrip("#").strip() if lines[0].startswith("#") else "General Guidelines"
-                section_text = "\n".join(lines[1:]) if len(lines) > 1 else lines[0]
+                if lines[0].startswith("#"):
+                    header = lines[0].lstrip("#").strip()
+                    section_text = "\n".join(lines[1:]).strip() if len(lines) > 1 else lines[0]
+                else:
+                    header = "General Guidelines"
+                    section_text = "\n".join(lines).strip()
 
                 if len(section_text.strip()) > 30:
                     self.documents.append({
@@ -66,19 +70,22 @@ class PolicyIndex:
                     })
 
     def search(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
-        """Performs keyword and semantic relevance scoring over policy chunks."""
-        query_terms = [t.lower() for t in re.findall(r"\w+", query) if len(t) > 2]
+        """Performs term relevance scoring supporting short acronyms and word boundary matching."""
+        # Include 2-character terms (e.g. HR, IT, PTO)
+        query_terms = [t.lower() for t in re.findall(r"\w+", query) if len(t) >= 2]
         scored_results = []
 
         for doc in self.documents:
             text_lower = doc["full_text"].lower()
             score = 0
             for term in query_terms:
-                if term in text_lower:
-                    score += text_lower.count(term)
-                    if term in doc["doc_title"].lower():
+                # Exact word boundary matching to avoid partial substring false positives
+                matches = len(re.findall(rf"\b{re.escape(term)}\b", text_lower))
+                if matches > 0:
+                    score += matches
+                    if re.search(rf"\b{re.escape(term)}\b", doc["doc_title"].lower()):
                         score += 5
-                    if term in doc["header"].lower():
+                    if re.search(rf"\b{re.escape(term)}\b", doc["header"].lower()):
                         score += 3
 
             if score > 0:
@@ -147,7 +154,11 @@ class GoogleCloudRAGEngine:
         try:
             from google.cloud import discoveryengine_v1 as discoveryengine
 
-            client = discoveryengine.SearchServiceClient()
+            client_options = None
+            if self.location != "global":
+                client_options = {"api_endpoint": f"{self.location}-discoveryengine.googleapis.com"}
+
+            client = discoveryengine.SearchServiceClient(client_options=client_options)
             serving_config = client.serving_config_path(
                 project=self.project_id,
                 location=self.location,
@@ -185,16 +196,18 @@ class GoogleCloudRAGEngine:
 
     def _search_vertex_rag_corpus(self, query: str, top_k: int) -> List[Dict[str, Any]]:
         """Search using Vertex AI RAG API (vertexai.preview.rag)."""
+        if not self.rag_corpus_id:
+            logger.info("VERTEX_RAG_CORPUS_ID is empty. Falling back to local index.")
+            return []
+
         try:
             import vertexai
             from vertexai.preview import rag
 
-            loc = self.location if self.location != "global" else "us-central1"
+            loc = self.location if self.location != "global" else os.getenv("GOOGLE_CLOUD_REGION_RAG", "us-central1")
             vertexai.init(project=self.project_id, location=loc)
 
-            rag_resources = []
-            if self.rag_corpus_id:
-                rag_resources.append(rag.RagResource(rag_corpus=self.rag_corpus_id))
+            rag_resources = [rag.RagResource(rag_corpus=self.rag_corpus_id)]
 
             response = rag.retrieval_query(
                 rag_resources=rag_resources,
@@ -227,22 +240,22 @@ class GoogleCloudRAGEngine:
 
     def _search_vertex_vector_search(self, query: str, top_k: int) -> List[Dict[str, Any]]:
         """Search using Vertex Vector Search matching engine."""
+        endpoint_id = os.getenv("VERTEX_VECTOR_SEARCH_ENDPOINT_ID", "")
+        if not endpoint_id:
+            logger.info("VERTEX_VECTOR_SEARCH_ENDPOINT_ID not set. Falling back to local index.")
+            return []
+
         try:
             from google.cloud import aiplatform
             import vertexai
             from vertexai.language_models import TextEmbeddingModel
 
-            loc = self.location if self.location != "global" else "us-central1"
+            loc = self.location if self.location != "global" else os.getenv("GOOGLE_CLOUD_REGION_RAG", "us-central1")
             vertexai.init(project=self.project_id, location=loc)
 
             model = TextEmbeddingModel.from_pretrained("text-embedding-004")
             embeddings = model.get_embeddings([query])
             query_vector = embeddings[0].values
-
-            endpoint_id = os.getenv("VERTEX_VECTOR_SEARCH_ENDPOINT_ID", "")
-            if not endpoint_id:
-                logger.info("VERTEX_VECTOR_SEARCH_ENDPOINT_ID not set. Falling back to local index.")
-                return []
 
             endpoint = aiplatform.MatchingEngineIndexEndpoint(index_endpoint_name=endpoint_id)
             response = endpoint.find_neighbors(

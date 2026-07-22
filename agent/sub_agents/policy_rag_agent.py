@@ -3,7 +3,10 @@ Policy RAG Sub-Agent Implementation
 Owner: Developer A
 Strictly adheres to GEMINI.md and PROJECT_CONFIG.md contracts.
 """
-from google.genai.agent import Agent
+try:
+    from google.adk import Agent
+except ImportError:
+    from google.genai.agent import Agent
 from agent.config import MODEL_NAME
 from agent.tools.rag_tool import policy_search_tool
 

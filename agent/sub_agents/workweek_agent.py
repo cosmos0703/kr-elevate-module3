@@ -1,7 +1,10 @@
 """
 WorkWeek HCM Sub-Agent (Owner: Developer B)
 """
-from google.genai.agent import Agent
+try:
+    from google.adk import Agent
+except ImportError:
+    from google.genai.agent import Agent
 from agent.config import MODEL_NAME
 from agent.tools.workweek_mcp import get_employee_balances_tool, request_time_off_tool, update_contact_tool
 

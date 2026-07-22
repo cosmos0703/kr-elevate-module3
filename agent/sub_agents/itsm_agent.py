@@ -1,7 +1,10 @@
 """
 ServiceImmediately ITSM Sub-Agent (Owner: Developer C)
 """
-from google.genai.agent import Agent
+try:
+    from google.adk import Agent
+except ImportError:
+    from google.genai.agent import Agent
 from agent.config import MODEL_NAME
 from agent.tools.itsm_mcp import create_ticket_tool, list_tickets_tool, update_ticket_status_tool
 

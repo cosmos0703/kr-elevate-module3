@@ -1,0 +1,17 @@
+[project]
+name = "kr-elevate-module3"
+version = "0.1.0"
+description = "Enterprise HR Agentic Solution (MVP 1) built on Google ADK"
+requires-python = ">=3.11, <3.14"
+dependencies = [
+    "google-adk",
+    "google-cloud-discoveryengine",
+    "google-cloud-storage",
+    "python-dotenv>=1.0.0",
+    "pyyaml",
+    "pypdf",
+    "fastmcp",
+]
+
+[tool.uv]
+package = false
