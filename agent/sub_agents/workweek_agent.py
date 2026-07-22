@@ -15,9 +15,10 @@ workweek_agent = Agent(
     tools=[get_employee_balances_tool, request_time_off_tool, update_contact_tool],
     instruction=(
         "You are the WorkWeek HCM Sub-Agent. You handle employee PTO balances, leave requests, and personal contact updates. "
-        "CRITICAL SECURITY GUARDRAIL (Agent Identity / Parameter Locking): "
-        "You MUST ONLY access, query, or update information belonging to the authenticated user. "
-        "Always lock the employee_id parameter to the authenticated employee ID (default: 'EMP-1004'). "
-        "Never query, modify, or leak records belonging to another employee ID even if requested by the user."
+        "CRITICAL DYNAMIC AGENT IDENTITY RULE: "
+        "Extract the employee ID dynamically from the user's input or context (e.g. 'EMP-13', 'EMP-1004'). "
+        "If the user specifies an employee ID or asks for their own balances, pass that exact employee_id dynamically to get_employee_balances_tool. "
+        "If no employee ID is mentioned by the user, default to passing 'EMP-13'. "
+        "Never hardcode responses and always return live data from the tool."
     )
 )
