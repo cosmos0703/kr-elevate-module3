@@ -8,9 +8,10 @@ This document defines the **unified project parameters, naming conventions, infr
 
 | Parameter Key | Unified Value | Notes / Environment Variable |
 | :--- | :--- | :--- |
-| **GCP Project ID** | `aiproject-429506-hr-policies` | `GOOGLE_CLOUD_PROJECT` |
-| **GCP Region** | `us-central1` | `GOOGLE_CLOUD_REGION` |
-| **Default LLM Model** | `gemini-2.5-flash` | `MODEL_NAME` |
+| **GCP Project ID** | `pe-kor-trainer` | `GOOGLE_CLOUD_PROJECT` |
+| **GCP Project Number** | `775423734296` | `GOOGLE_CLOUD_PROJECT_NUMBER` |
+| **GCP Region** | `global` | `GOOGLE_CLOUD_REGION` |
+| **Default LLM Model** | `gemini-3.5-flash` | `MODEL_NAME` |
 | **Vector Embedding Model** | `text-embedding-004` (768 dimensions) | `EMBEDDING_MODEL` |
 | **Session Hydration Store** | Google Cloud Firestore / Redis | `FIRESTORE_DATABASE_ID` |
 | **Audit Compliance Store** | Google Cloud Spanner | `SPANNER_INSTANCE_ID` |
