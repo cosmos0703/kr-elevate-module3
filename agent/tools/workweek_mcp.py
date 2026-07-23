@@ -21,6 +21,28 @@ LIVE_IAP_COOKIE = os.environ.get(
     "GCP_IAP_UID=116845036445128156526; __Host-GCP_IAP_AUTH_TOKEN_444579F2A51CC690=AVF5qOGjeIxYeNWRskRbf0SvzawB_2zE_Wa4nyRqkB1Ghzmrgc0fzo1unYTZScKXPmGucRNHdZSFhznxblFZMdpibOt32eyZPuK2WuZ4IWvm0orbwSLihzlLqg1KLxN9yUl5CqcVxvIXjObShmRny3IdH66h1skPVsJ0j1-Cy7klliOg7aNqjOHaECO7TCtxcMFnuenJh1RRFhwDXiUI5o7DNcdzfziXcn36rUSIOJfmsUNancrBB3PSUPkaWAO3hCbKg_ngxa0ZalyH_vktkKFKdiLNsDW8GAlfjSRNnAcmJanfC35CWqbdCM8doH_PpZ_0Omc8ge7_ZwN6PS_oB6_qzKZbYEh01l5oaQcqe32kojZDDZuR7XMSAKoSRMgAeWeWIMweQclVHEVXdU7nQ9yVFKh4JlN0omuYBRsxJ8CE9Lvuo1lEEvu1E6O2RuGDfV6c7yp9qGsHISeEQ0O9kS8SqmqP5ZfxEJlFhELNiRFA47zr5N2MnJuWGkmg__PvS28Ue9LxwHed-sFIIHUuM1AqLM3rNfaG_NThdRFWJrYyh-k-ZcBrFWQA4gU_FguEzswzXq2cllrt6N6cEtacQsnMzlXzii2U5IRVcCHcXuWSQoxdRsXQt9OWmSgwIhtyHEseutWRkHveL-3ZKUA0ToiYbUmcHaf4AlpcxppZXMzJeYU17gejsQGxHT3cLqJkIE4X_mmXPBlYBfDkPf3ocTZA7vVgRwE9bEBw7t6BtiGkxzoYw5n5aR5_wpgRoYYXTCUUZc_RlXwQPCWwG2PyBxEXU26kEebwycFDHqqduO6_YAUxxgzZ6TFTVeuU6YL_yG93hdwLwhCEGjELUa1Jd7v8jBXsEa1ZmA0iyBD-SHX175v2X3W6gF7rx6CbzjfjKDwQ41RHzbIcFMmJ63bE7tA-xDP2r-7wZVTd-aOUjlhBB0bq5N6L8pAQ5QXPcPfbRNhc8xXR8DnMZIEDJPqY5pClc6bumRi2GUILHzSlF85-5ZDLp6xbmlPSgVxKkR2vN40G2kohvXliEfDcvrej5TwyqRm6oj7GzUL9EZy_V9L_gegSlnSZ-JK__I8eJT6-U7vH2nkd5XYujrHY4f94PouiVzhqdCnoUZeydV66vRFQ_BNeS77kaUxJogHLUrXMo-JQjQNvyJEczE5PJjl_VQrEnmxtQ26l0GC94JY43Dz7IjJ5_hoOrNanCa0v19I5X-cctKimslcZPYfmB6GZY9JH7d8EtvOpEC93005z_OcFSTzARwqfDS_uadzL7t-KRQ1WNWxbPO_bxQOUvAZ9RqzIfGiOwHOFPFwk7eOcxAs9B9WJtAZw8q2iH2IZnmTphz1-_pTaNHnCHCmSzWqfJE7BCzlh2RF5TxaGpVxI1YYgQVz9tCZUZtByx9cnL6ZdXZ0uu5BnqCgnLDuBQ8OZoF8vcuPkeT0xBzGaeXNYsKbh68muWer3OV-vzrsWDOhnnMWTKhUcLgeDjQz2uC19faFG1-dSl5HT1b87QWyXyXAbPw3Sp2I49KwsEwCRQ6XXniaaqyJtwVtdnVQBrDbDw3tyTk-4V_YQKArYTBneaTzTJ_HCuDql_MIUENXMu1BvNuHxHoQQryNg88LEQAk-8mKDu8qjqhy9_QPlFVMjiZTbqpHefiaaWuhviE7_1ur_XVxz219JvGADmuZOD2B5-91zjmYqlIcoz7CuyXZKBT7guYbSMkHwOASNqAtvVwKQvrcuO7l--KRSw_hoY4D8Pb3VehZOa3GG3aHZOX9lBh2hbwYRGwSUhY4_IugFqAlIdAg_ZG9nirpiLvgyr7pejyTEiisCR9-QzqoGasGqCE7PqIyvVtjCNKU; GAESA=CrYBMDAxNTQ4ZjcyOWE5ODBiOTMyYjY0YjY0YzcwOWYwZDViMjc0OWI0ZWQ3YjRjNjU5ODQ5Y2U0OGI2NWM5MGM5OTlmNmZkNjRjZjI0MTk1OTNjNTMwNDYxMmM3Yzk2MjhlYzZhZmFlMjE0ZjNkNjFjNTEwZGMyNTk4MDUyZTg3ZmQ2MzZjOGVmM2Q5YWU3Y2ZhYTM5NWUxZTI4MGZmMmU2YzRiMjUyMjA4NjE1Y2U4ZjQ5MmNjN2EQopPt4_gz"
 )
 
+
+def generate_mcp_token_for_user(user_email: str) -> Optional[str]:
+    """
+    Automated Token Lifecycle (POST /api/mcp-tokens):
+    Dynamically generates a Personal Access Token (PAT) for the authenticated user session.
+    """
+    url = "https://mock-saas.aishprabhat.demo.altostrat.com/api/mcp-tokens"
+    payload = json.dumps({"token_name": f"{user_email}_token"}).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "cookie": LIVE_IAP_COOKIE,
+    }
+    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data.get("raw_token")
+    except Exception as ex:
+        print(f"[TOKEN LIFECYCLE WARNING] Failed to issue automated MCP token: {ex}")
+        return None
+
+
 # ============================================================================
 # Dynamic Stateful Cache (Real-time synchronized with remote SaaS API)
 # ============================================================================
@@ -43,7 +65,7 @@ try:
             headers={
                 "cookie": LIVE_IAP_COOKIE,
                 "X-MCP-Token": DEFAULT_MCP_TOKEN,
-                "x-goog-authenticated-user-email": DEFAULT_USER_EMAIL,
+                "x-goog-authenticated-user-email": os.environ.get("USER_EMAIL", ""),
             }
         )
     )
@@ -63,7 +85,7 @@ except ImportError:
             headers={
                 "cookie": LIVE_IAP_COOKIE,
                 "X-MCP-Token": DEFAULT_MCP_TOKEN,
-                "x-goog-authenticated-user-email": DEFAULT_USER_EMAIL,
+                "x-goog-authenticated-user-email": os.environ.get("USER_EMAIL", ""),
             }
         )
     )
@@ -75,7 +97,7 @@ class WorkWeekFastMcpClient:
         mcp_url: str = WORKWEEK_MCP_URL,
         rest_url: str = WORKWEEK_REST_URL,
         mcp_token: str = DEFAULT_MCP_TOKEN,
-        user_email: str = DEFAULT_USER_EMAIL,
+        user_email: str = "",
     ):
         self.mcp_url = mcp_url
         self.rest_url = rest_url
