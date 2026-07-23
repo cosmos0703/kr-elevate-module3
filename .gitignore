@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment & ADK local storage
+.venv/
+venv/
+ENV/
+.adk/
+agent/.adk/
+
+# Logs & temp
+*.log
+scratch/*.pyc
