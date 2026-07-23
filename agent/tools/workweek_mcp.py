@@ -145,16 +145,22 @@ _client = WorkWeekFastMcpClient()
 
 def resolve_employee_id(identifier: Optional[str] = None, email: Optional[str] = None) -> str:
     target = (email or identifier or "").strip()
+    if not target:
+        return "EMP-USER"
 
     if target.upper().startswith("EMP-") or target.upper().startswith("EMP_"):
         return target.upper().replace("_", "-")
 
-    email_param = target if "@" in target else (email or None)
-    remote = _client.request("employees/current/profile", method="GET", email=email_param)
+    # Derive dynamic employee ID directly from email username (e.g., dulee@google.com -> EMP-dulee)
+    user_part = target.split("@")[0].replace(".", "-") if "@" in target else target
+    dynamic_id = f"EMP-{user_part}"
+
+    # Try querying specific remote profile if available
+    remote = _client.request(f"employees/{dynamic_id}/profile", method="GET", email=target)
     if isinstance(remote, dict) and "employee_id" in remote and remote.get("status") != "ERROR":
         return remote["employee_id"]
 
-    return target or "UNKNOWN"
+    return dynamic_id
 
 
 def _get_or_create_employee(emp_id: str, email: Optional[str] = None) -> Dict[str, Any]:
