@@ -212,7 +212,7 @@ def resolve_employee_id(identifier: Optional[str] = None, email: Optional[str] =
     target_lower = target.lower()
     if "1001" in target_lower or "altostrat" in target_lower or "inhye.park" in target_lower:
         return "EMP-1001"
-    if "1004" in target_lower or "donguk" in target_lower:
+    if "1004" in target_lower or "donguk" in target_lower or "dulee" in target_lower:
         return "EMP-1004"
     if "26" in target_lower or "inhyep@google.com" in target_lower or target_lower == "inhyep":
         return "EMP-26"
