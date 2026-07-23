@@ -13,8 +13,6 @@ from typing import Any, Dict, List, Optional
 
 WORKWEEK_MCP_URL = os.environ.get("WORKWEEK_MCP_URL", "https://mock-saas.aishprabhat.demo.altostrat.com/work-week/mcp/")
 WORKWEEK_REST_URL = os.environ.get("WORKWEEK_REST_URL", "https://mock-saas.aishprabhat.demo.altostrat.com/work-week/api")
-DEFAULT_EMPLOYEE_ID = "EMP-26"
-DEFAULT_USER_EMAIL = os.environ.get("USER_EMAIL", "inhyep@google.com")
 DEFAULT_MCP_TOKEN = os.environ.get("X_MCP_TOKEN", "mcp_shared_secret_token")
 
 # Fresh Active IAP Authentication Cookie from user's live browser session
@@ -125,8 +123,6 @@ _client = WorkWeekFastMcpClient()
 
 def resolve_employee_id(identifier: Optional[str] = None, email: Optional[str] = None) -> str:
     target = (email or identifier or "").strip()
-    if not target or target.lower() in ["current", "self", "me", ""]:
-        target = (email or identifier or DEFAULT_USER_EMAIL).strip()
 
     if target.upper().startswith("EMP-") or target.upper().startswith("EMP_"):
         return target.upper().replace("_", "-")
@@ -136,7 +132,7 @@ def resolve_employee_id(identifier: Optional[str] = None, email: Optional[str] =
     if isinstance(remote, dict) and "employee_id" in remote and remote.get("status") != "ERROR":
         return remote["employee_id"]
 
-    return DEFAULT_EMPLOYEE_ID
+    return target or "UNKNOWN"
 
 
 def _get_or_create_employee(emp_id: str, email: Optional[str] = None) -> Dict[str, Any]:
