@@ -7,6 +7,9 @@ REGION="us-central1"
 SERVICE_NAME="kr-elevate-module3-web"
 IMAGE_URI="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
 
+export GOOGLE_CLOUD_PROJECT="${PROJECT_ID}"
+export CLOUDSDK_CORE_PROJECT="${PROJECT_ID}"
+
 echo "========================================================================="
 echo "🚀 Deploying HR Agentic Solution to Google Cloud Run"
 echo "📌 Project ID : ${PROJECT_ID}"
@@ -14,7 +17,11 @@ echo "📌 Region     : ${REGION}"
 echo "📌 Service    : ${SERVICE_NAME}"
 echo "========================================================================="
 
-# 1. Enable required GCP APIs
+# 1. Force gcloud project context to pe-kor-trainer
+echo "🔧 Setting active gcloud project context to ${PROJECT_ID}..."
+gcloud config set project "${PROJECT_ID}" || true
+
+# 2. Enable required GCP APIs
 echo "📡 [1/3] Enabling required Google Cloud APIs for project ${PROJECT_ID}..."
 gcloud services enable run.googleapis.com \
                        cloudbuild.googleapis.com \
@@ -24,11 +31,11 @@ gcloud services enable run.googleapis.com \
                        secretmanager.googleapis.com \
                        --project="${PROJECT_ID}" || true
 
-# 2. Build container image via Cloud Build
+# 3. Build container image via Cloud Build
 echo "📦 [2/3] Building container image via Cloud Build on ${PROJECT_ID}..."
 gcloud builds submit --tag "${IMAGE_URI}" --project="${PROJECT_ID}" .
 
-# 3. Deploy container image to Cloud Run
+# 4. Deploy container image to Cloud Run
 echo "🌐 [3/3] Deploying service to Cloud Run on ${PROJECT_ID}..."
 gcloud run deploy "${SERVICE_NAME}" \
     --image="${IMAGE_URI}" \
@@ -39,7 +46,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --port=8080 \
     --project="${PROJECT_ID}"
 
-# 4. Grant public unauthenticated access (allUsers -> roles/run.invoker)
+# 5. Grant public unauthenticated access (allUsers -> roles/run.invoker)
 echo "🔓 Granting public unauthenticated access (roles/run.invoker) to Cloud Run..."
 gcloud run services add-iam-policy-binding "${SERVICE_NAME}" \
     --region="${REGION}" \

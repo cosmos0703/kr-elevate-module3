@@ -6,6 +6,9 @@ PROJECT_ID="pe-kor-trainer"
 REGION="us-central1"
 SERVICE_NAME="kr-elevate-module3-agent"
 
+export GOOGLE_CLOUD_PROJECT="${PROJECT_ID}"
+export CLOUDSDK_CORE_PROJECT="${PROJECT_ID}"
+
 echo "========================================================================="
 echo "🤖 Deploying HR Agentic Solution to Google Agent Engine (Agent Runtime)"
 echo "📌 Project ID   : ${PROJECT_ID}"
@@ -13,14 +16,18 @@ echo "📌 Region       : ${REGION}"
 echo "📌 Target Name  : ${SERVICE_NAME}"
 echo "========================================================================="
 
-# 1. Enable Vertex AI & Agent Engine APIs
+# 1. Force gcloud project context to pe-kor-trainer
+echo "🔧 Setting active gcloud project context to ${PROJECT_ID}..."
+gcloud config set project "${PROJECT_ID}" || true
+
+# 2. Enable Vertex AI & Agent Engine APIs
 echo "📡 [1/2] Enabling Vertex AI & Agent Engine APIs on ${PROJECT_ID}..."
 gcloud services enable aiplatform.googleapis.com \
                        discoveryengine.googleapis.com \
                        secretmanager.googleapis.com \
                        --project="${PROJECT_ID}" || true
 
-# 2. Deploy via ADK agents-cli toolchain
+# 3. Deploy via ADK agents-cli toolchain
 echo "🚀 [2/2] Triggering ADK Agent Runtime Deployment via agents-cli..."
 uv run agents-cli deploy \
     -d agent_runtime \
