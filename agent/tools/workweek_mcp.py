@@ -23,89 +23,8 @@ LIVE_IAP_COOKIE = os.environ.get(
     "GCP_IAP_UID=116845036445128156526; __Host-GCP_IAP_AUTH_TOKEN_444579F2A51CC690=AVF5qOGjeIxYeNWRskRbf0SvzawB_2zE_Wa4nyRqkB1Ghzmrgc0fzo1unYTZScKXPmGucRNHdZSFhznxblFZMdpibOt32eyZPuK2WuZ4IWvm0orbwSLihzlLqg1KLxN9yUl5CqcVxvIXjObShmRny3IdH66h1skPVsJ0j1-Cy7klliOg7aNqjOHaECO7TCtxcMFnuenJh1RRFhwDXiUI5o7DNcdzfziXcn36rUSIOJfmsUNancrBB3PSUPkaWAO3hCbKg_ngxa0ZalyH_vktkKFKdiLNsDW8GAlfjSRNnAcmJanfC35CWqbdCM8doH_PpZ_0Omc8ge7_ZwN6PS_oB6_qzKZbYEh01l5oaQcqe32kojZDDZuR7XMSAKoSRMgAeWeWIMweQclVHEVXdU7nQ9yVFKh4JlN0omuYBRsxJ8CE9Lvuo1lEEvu1E6O2RuGDfV6c7yp9qGsHISeEQ0O9kS8SqmqP5ZfxEJlFhELNiRFA47zr5N2MnJuWGkmg__PvS28Ue9LxwHed-sFIIHUuM1AqLM3rNfaG_NThdRFWJrYyh-k-ZcBrFWQA4gU_FguEzswzXq2cllrt6N6cEtacQsnMzlXzii2U5IRVcCHcXuWSQoxdRsXQt9OWmSgwIhtyHEseutWRkHveL-3ZKUA0ToiYbUmcHaf4AlpcxppZXMzJeYU17gejsQGxHT3cLqJkIE4X_mmXPBlYBfDkPf3ocTZA7vVgRwE9bEBw7t6BtiGkxzoYw5n5aR5_wpgRoYYXTCUUZc_RlXwQPCWwG2PyBxEXU26kEebwycFDHqqduO6_YAUxxgzZ6TFTVeuU6YL_yG93hdwLwhCEGjELUa1Jd7v8jBXsEa1ZmA0iyBD-SHX175v2X3W6gF7rx6CbzjfjKDwQ41RHzbIcFMmJ63bE7tA-xDP2r-7wZVTd-aOUjlhBB0bq5N6L8pAQ5QXPcPfbRNhc8xXR8DnMZIEDJPqY5pClc6bumRi2GUILHzSlF85-5ZDLp6xbmlPSgVxKkR2vN40G2kohvXliEfDcvrej5TwyqRm6oj7GzUL9EZy_V9L_gegSlnSZ-JK__I8eJT6-U7vH2nkd5XYujrHY4f94PouiVzhqdCnoUZeydV66vRFQ_BNeS77kaUxJogHLUrXMo-JQjQNvyJEczE5PJjl_VQrEnmxtQ26l0GC94JY43Dz7IjJ5_hoOrNanCa0v19I5X-cctKimslcZPYfmB6GZY9JH7d8EtvOpEC93005z_OcFSTzARwqfDS_uadzL7t-KRQ1WNWxbPO_bxQOUvAZ9RqzIfGiOwHOFPFwk7eOcxAs9B9WJtAZw8q2iH2IZnmTphz1-_pTaNHnCHCmSzWqfJE7BCzlh2RF5TxaGpVxI1YYgQVz9tCZUZtByx9cnL6ZdXZ0uu5BnqCgnLDuBQ8OZoF8vcuPkeT0xBzGaeXNYsKbh68muWer3OV-vzrsWDOhnnMWTKhUcLgeDjQz2uC19faFG1-dSl5HT1b87QWyXyXAbPw3Sp2I49KwsEwCRQ6XXniaaqyJtwVtdnVQBrDbDw3tyTk-4V_YQKArYTBneaTzTJ_HCuDql_MIUENXMu1BvNuHxHoQQryNg88LEQAk-8mKDu8qjqhy9_QPlFVMjiZTbqpHefiaaWuhviE7_1ur_XVxz219JvGADmuZOD2B5-91zjmYqlIcoz7CuyXZKBT7guYbSMkHwOASNqAtvVwKQvrcuO7l--KRSw_hoY4D8Pb3VehZOa3GG3aHZOX9lBh2hbwYRGwSUhY4_IugFqAlIdAg_ZG9nirpiLvgyr7pejyTEiisCR9-QzqoGasGqCE7PqIyvVtjCNKU; GAESA=CrYBMDAxNTQ4ZjcyOWE5ODBiOTMyYjY0YjY0YzcwOWYwZDViMjc0OWI0ZWQ3YjRjNjU5ODQ5Y2U0OGI2NWM5MGM5OTlmNmZkNjRjZjI0MTk1OTNjNTMwNDYxMmM3Yzk2MjhlYzZhZmFlMjE0ZjNkNjFjNTEwZGMyNTk4MDUyZTg3ZmQ2MzZjOGVmM2Q5YWU3Y2ZhYTM5NWUxZTI4MGZmMmU2YzRiMjUyMjA4NjE1Y2U4ZjQ5MmNjN2EQopPt4_gz"
 )
 
-# ============================================================================
-# Live Stateful Database & Cache (Real-time synchronized with remote SaaS)
-# ============================================================================
-
-EMPLOYEE_DATABASE: Dict[str, Dict[str, Any]] = {
-    "EMP-26": {
-        "employee_id": "EMP-26",
-        "name": "Inhyep Employee",
-        "first_name": "Inhyep",
-        "last_name": "Employee",
-        "email": "inhyep@google.com",
-        "job_title": "Solutions Acceleration Architect",
-        "role": "Individual Contributor",
-        "department": "Google Forge (Customer Engineering)",
-        "hire_date": "2026-07-22",
-        "manager_id": "EMP-1",
-        "manager_name": "Vicky Falconer",
-        "home_address": "Singapore Office, 80 Pasir Panjang Rd, Singapore",
-        "phone_number": "+65-6521-0000",
-        "location": "Singapore",
-        "work_status": "Regular",
-        "balances": {
-            "vacation": {"accrued": 20.0, "used": 12.0, "remaining": 8.0},
-            "sick": {"accrued": 10.0, "used": 0.0, "remaining": 10.0},
-            "personal": {"accrued": 5.0, "used": 1.0, "remaining": 4.0},
-            "parental": {"accrued": 60.0, "used": 0.0, "remaining": 60.0},
-        },
-        "requests": [],
-        "feedback": [
-            {"from": "Vicky Falconer", "date": "2026-07-20", "message": "Outstanding work on the agent architecture demo!"}
-        ],
-    },
-    "EMP-1001": {
-        "employee_id": "EMP-1001",
-        "name": "Inhye Park",
-        "first_name": "Inhye",
-        "last_name": "Park",
-        "email": "inhyep@gcp.altostrat.com",
-        "job_title": "Lead Solution Architect",
-        "role": "Lead Solution Architect",
-        "department": "Engineering / Cloud Solutions",
-        "hire_date": "2026-07-22",
-        "manager_id": "EMP-9000",
-        "manager_name": "Alex Vance",
-        "home_address": "123 Tech Boulevard, San Jose, CA",
-        "phone_number": "+1 (555) 345-6789",
-        "location": "San Jose, CA",
-        "work_status": "Remote",
-        "balances": {
-            "vacation": {"accrued": 15.0, "used": 5.0, "remaining": 10.0},
-            "sick": {"accrued": 10.0, "used": 2.0, "remaining": 8.0},
-            "personal": {"accrued": 5.0, "used": 1.0, "remaining": 4.0},
-            "parental": {"accrued": 60.0, "used": 0.0, "remaining": 60.0},
-        },
-        "requests": [],
-        "feedback": [],
-    },
-    "EMP-1004": {
-        "employee_id": "EMP-1004",
-        "name": "Donguk Lee",
-        "first_name": "Donguk",
-        "last_name": "Lee",
-        "email": "donguk@google.com",
-        "job_title": "Cloud Architect",
-        "role": "Individual Contributor",
-        "department": "Google Cloud",
-        "hire_date": "2026-07-22",
-        "manager_id": "EMP-1",
-        "manager_name": "Vicky Falconer",
-        "home_address": "Seoul Office, Gangnam-gu, Seoul",
-        "phone_number": "+82-10-1234-5678",
-        "location": "Seoul",
-        "work_status": "Hybrid",
-        "balances": {
-            "vacation": {"accrued": 18.0, "used": 3.0, "remaining": 15.0},
-            "sick": {"accrued": 10.0, "used": 1.0, "remaining": 9.0},
-            "personal": {"accrued": 5.0, "used": 0.0, "remaining": 5.0},
-            "parental": {"accrued": 60.0, "used": 0.0, "remaining": 60.0},
-        },
-        "requests": [],
-        "feedback": [],
-    }
-}
+# Dynamic Live Employee Database & Cache (Populated strictly via Remote SaaS API)
+EMPLOYEE_DATABASE: Dict[str, Dict[str, Any]] = {}
 
 _REQ_COUNTER = 1000
 
@@ -305,8 +224,8 @@ def get_employee_balances_tool(employee_id: Optional[str] = None, email: Optiona
         remote = _client.request(f"employees/{target_id}/timeoff", method="GET", email=email)
         if isinstance(remote, dict) and "vacation_remaining" in remote and remote.get("status") not in ["ERROR", "NETWORK_OFFLINE"]:
             emp["balances"]["vacation"]["accrued"] = float(remote.get("vacation_accrued", 20.0))
-            emp["balances"]["vacation"]["used"] = float(remote.get("vacation_used", 12.0))
-            emp["balances"]["vacation"]["remaining"] = float(remote.get("vacation_remaining", 8.0))
+            emp["balances"]["vacation"]["used"] = float(remote.get("vacation_used", 0.0))
+            emp["balances"]["vacation"]["remaining"] = float(remote.get("vacation_remaining", 20.0))
             emp["balances"]["sick"]["accrued"] = float(remote.get("sick_accrued", 10.0))
             emp["balances"]["sick"]["used"] = float(remote.get("sick_used", 0.0))
             emp["balances"]["sick"]["remaining"] = float(remote.get("sick_remaining", 10.0))
