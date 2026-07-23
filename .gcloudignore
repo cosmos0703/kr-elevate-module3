@@ -1,0 +1,12 @@
+.gcloudignore
+.git
+.gitignore
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.agent/
+.agents/
+.gemini/
+tests/
+evals/

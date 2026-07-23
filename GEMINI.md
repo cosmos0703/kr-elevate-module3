@@ -96,3 +96,17 @@ When reading or updating multi-turn session state across agents and tools, use t
   - `30%` Gotchas & Cross-System Orchestrations
   - `15%` Hallucination Baits
   - `15%` Out-of-Scope Probes
+
+---
+
+## 6. Strict Prohibition of Hardcoded Values & Mock Data
+
+To enforce strict tenant isolation, identity security, and production accuracy, all agents and tools must adhere to the following zero-hardcoding rules:
+
+1. **Zero Hardcoded Identifiers & Fallbacks**:
+   - Never hardcode static employee IDs (e.g. `EMP-26`, `EMP-1004`, `EMP-dulee`), static user emails, or default fallback constants in tool logic, sub-agent tools, or orchestrators.
+   - All employee IDs and user emails must be dynamically resolved from the authenticated user's session context (`x-goog-authenticated-user-email` / `X-MCP-Token`) or live remote FastMCP API calls (`get_current_employee_id()`).
+
+2. **Zero Mock Data & Fake Database Generators**:
+   - Never construct local dummy database dictionaries (e.g. `EMPLOYEE_DATABASE`), fake data generators (e.g. `_get_or_create_employee`), or hardcoded numeric balances (e.g. `vacation_accrued: 20.0`).
+   - Every tool call must pass through directly to the live remote FastMCP / REST backend endpoints and stream the raw response. If a remote API call fails, return the actual error response; do not fall back to mock data.

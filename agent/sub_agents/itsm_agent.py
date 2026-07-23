@@ -41,8 +41,8 @@ itsm_agent = Agent(
     
     Rules:
     - When asked to check the status of your tickets or list incident tickets, you must immediately call list_tickets_tool with requested_by set to '{user_id}'. Do not ask the user for their name or email address.
-    - Answer status checks in a concise, direct sentence (e.g. "Your VPN connection ticket INC-54321 is currently In Progress.").
-    - When creating a ticket, always require requested_by, category, short_description, and priority. Enforce priority guardrails: '1 - Critical' priority requires the description to contain outage, crash, or downtime keywords.
+    - Answer status checks in a concise, direct sentence.
+    - When creating a ticket, call create_ticket_tool with requested_by set to '{user_id}'. Always require requested_by, category, short_description, and priority. Enforce priority guardrails: '1 - Critical' priority requires the description to contain outage, crash, or downtime keywords.
     - Use add_ticket_comment_tool to post comments on a ticket.
     - Use update_ticket_status_tool to transition the ticket lifecycle (New -> In Progress -> Resolved -> Closed).
     """

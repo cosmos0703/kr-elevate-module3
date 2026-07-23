@@ -10,7 +10,7 @@ import urllib.parse
 from typing import Any, Dict
 
 try:
-    from agent.root_orchestrator import hr_root_orchestrator
+    from agent.root_orchestrator import handle_root_chat, hr_root_orchestrator
     from agent.sub_agents.workweek_agent import handle_workweek_chat_simulation, workweek_agent
     from agent.tools.workweek_mcp import (
         resolve_employee_id,
@@ -22,9 +22,10 @@ try:
         cancel_time_off_tool,
         get_employee_feedback_tool,
         generate_mcp_token_for_user,
+        get_email_for_token,
     )
 except ImportError:
-    from root_orchestrator import hr_root_orchestrator
+    from root_orchestrator import handle_root_chat, hr_root_orchestrator
     from sub_agents.workweek_agent import handle_workweek_chat_simulation, workweek_agent
     from tools.workweek_mcp import (
         resolve_employee_id,
@@ -54,7 +55,7 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
         email_param = query.get("email", [""])[0] or None
         emp_id = resolve_employee_id(email=email_param) if email_param else "UNKNOWN"
 
-        if path in ["/", "/chat", "/index.html"]:
+        if path in ["/", "/chat", "/index.html", "/static/index.html"]:
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
@@ -79,6 +80,12 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json(get_employee_feedback_tool(emp_id, email=email_param))
             return
 
+        if path == "/api/auth/google/login":
+            self.send_response(302)
+            self.send_header("Location", "/?google_auth=success")
+            self.end_headers()
+            return
+
         self.send_error(404, "Endpoint not found")
 
     def do_POST(self):
@@ -92,9 +99,10 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
             data = {}
 
         if path == "/api/auth/login":
-            user_email = (data.get("email") or "user@google.com").strip()
+            user_email = (data.get("email") or "").strip()
+            user_emp_id = (data.get("employee_id") or "").strip()
             raw_token = generate_mcp_token_for_user(user_email)
-            emp_id = resolve_employee_id(email=user_email)
+            emp_id = resolve_employee_id(identifier=user_emp_id, email=user_email)
             profile = get_current_employee_id_tool(emp_id, email=user_email)
             self.send_json({
                 "status": "SUCCESS",
@@ -108,8 +116,16 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         if path in ["/api/agent/chat", "/api/workweek/chat"]:
             email_val = data.get("email")
+            emp_id_val = data.get("employee_id")
+            mcp_token_val = data.get("mcp_token")
+            if mcp_token_val:
+                os.environ["X_MCP_TOKEN"] = mcp_token_val
+                owner_email = get_email_for_token(mcp_token_val)
+                if owner_email:
+                    email_val = owner_email
+                    emp_id_val = resolve_employee_id(email=owner_email)
             msg = data.get("message", "")
-            res = handle_workweek_chat_simulation(msg, email=email_val)
+            res = handle_root_chat(msg, email=email_val, employee_id=emp_id_val)
             self.send_json(res)
             return
 
@@ -166,17 +182,24 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 def main():
     socketserver.TCPServer.allow_reuse_address = True
-    try:
-        httpd = ReusableTCPServer(("", PORT), ADKWebRequestHandler)
-    except OSError:
-        # Fallback to next open port if 8080 is momentarily held
-        httpd = ReusableTCPServer(("", 8081), ADKWebRequestHandler)
+    httpd = None
+    actual_port = 8080
+    for p in range(8080, 8100):
+        try:
+            httpd = ReusableTCPServer(("", p), ADKWebRequestHandler)
+            actual_port = p
+            break
+        except OSError:
+            continue
 
-    actual_port = httpd.server_address[1]
+    if not httpd:
+        print("❌ Could not bind server to any port in range 8080-8100.")
+        return
+
     print("=" * 75)
     print(f"🌐 Google ADK Web Server running on: http://localhost:{actual_port}")
     print(f"📡 WorkWeek FastMCP Endpoint: https://mock-saas.aishprabhat.demo.altostrat.com/work-week/mcp/")
-    print(f"🤖 Loaded Sub-Agent: {workweek_agent.name} (EMP-26: Inhyep Employee)")
+    print(f"🤖 Loaded Sub-Agent: {workweek_agent.name}")
     print("=" * 75)
     try:
         httpd.serve_forever()

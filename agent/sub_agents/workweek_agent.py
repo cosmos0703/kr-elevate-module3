@@ -1,14 +1,13 @@
 """
 WorkWeek HCM Sub-Agent (Owner: Developer B)
 Adheres to Real Authenticated Login Data & Option A McpToolset.
-Supports dynamic Email-to-EmployeeID Identity Bridging (inhyep@google.com -> EMP-26).
+Supports dynamic Email-to-EmployeeID Identity Bridging.
 """
 import os
 import re
 from typing import Any, Dict, List, Optional
 from agent.config import MODEL_NAME
 from agent.tools.workweek_mcp import (
-    DEFAULT_EMPLOYEE_ID,
     resolve_employee_id,
     get_current_employee_id_tool,
     get_employee_balances_tool,
@@ -111,7 +110,7 @@ def handle_workweek_chat_simulation(
     email: Optional[str] = None,
     session_state: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    active_email = email or (employee_id if (employee_id and "@" in str(employee_id)) else "inhyep@google.com")
+    active_email = email or (employee_id if (employee_id and "@" in str(employee_id)) else "")
     resolved_id = resolve_employee_id(employee_id, email=active_email)
     prompt_lower = user_prompt.lower()
     tool_calls = []
@@ -121,13 +120,17 @@ def handle_workweek_chat_simulation(
         session_state["employee_id"] = resolved_id
         session_state["user_id"] = resolved_id
 
-    if ("emp-1004" in prompt_lower or "donguk" in prompt_lower) and resolved_id != "EMP-1004":
-        return {
-            "reply": f"🛡️ [AI Identity Guardrail]: Access Denied. Authenticated session '{active_email}' ({resolved_id}) is not authorized to access records belonging to EMP-1004.",
-            "tool_calls": [{"name": "rbac_parameter_lock", "args": {"target_id": "EMP-1004", "session_id": resolved_id, "email": active_email}, "response": {"status": "ERROR", "code": 403}}],
-            "status": "blocked",
-            "session_state": session_state,
-        }
+    # Dynamic RBAC Tenant Isolation Guardrail: verify caller does not attempt to query another employee's specific EMP-xx ID
+    other_emp_match = re.search(r"\bemp-\d+\b", prompt_lower)
+    if other_emp_match:
+        requested_emp = other_emp_match.group(0).upper()
+        if requested_emp != resolved_id:
+            return {
+                "reply": f"🛡️ [AI Identity Guardrail]: Access Denied. Authenticated session '{active_email}' ({resolved_id}) is not authorized to access records belonging to {requested_emp}.",
+                "tool_calls": [{"name": "rbac_parameter_lock", "args": {"target_id": requested_emp, "session_id": resolved_id, "email": active_email}, "response": {"status": "ERROR", "code": 403}}],
+                "status": "blocked",
+                "session_state": session_state,
+            }
 
     # 1. Leave Request Booking (e.g., 'Submit 2 days vacation', '휴가 신청', '연차 신청', 'book vacation', 'time off')
     if (any(kw in prompt_lower for kw in ["submit", "신청", "book", "apply", "예약", "등록"]) and any(kw in prompt_lower for kw in ["vacation", "pto", "leave", "휴가", "연차", "time off", "timeoff", "일", "day", "days"])) or any(kw in prompt_lower for kw in ["request leave", "request time off", "book leave"]):
@@ -206,7 +209,7 @@ def handle_workweek_chat_simulation(
                 f"- **Job Title**: **{res.get('job_title', 'Solutions Acceleration Architect')}**\n"
                 f"- **Department**: {res.get('department', 'Google Forge (Customer Engineering)')}\n"
                 f"- **Role**: {res.get('role', 'Individual Contributor')}\n"
-                f"- **Manager**: 👤 **{res.get('manager_name', 'Vicky Falconer')}** (`{res.get('manager_id', 'EMP-1')}`)\n"
+                f"- **Manager**: 👤 **{res.get('manager_name', 'Manager')}** (`{res.get('manager_id', 'N/A')}`)\n"
                 f"- **Home Address**: 📍 {res.get('home_address', 'Singapore Office, 80 Pasir Panjang Rd, Singapore')}\n"
                 f"- **Phone**: 📞 {res.get('phone_number', '+65-6521-0000')}\n"
                 f"- **Hire Date**: {res.get('hire_date', '2026-07-22')}"

@@ -385,10 +385,12 @@
           <span class="info-val" id="dispEmpId">None</span>
         </div>
         <div class="info-row">
-          <span class="info-label">X-MCP-Token</span>
+          <span class="info-label">Active Token</span>
           <span class="info-val" id="dispToken" style="font-family: monospace; font-size: 0.75rem;">None</span>
         </div>
       </div>
+
+
 
       <div class="card">
         <h3>Multi-Agent System</h3>
@@ -419,7 +421,12 @@
       <div class="chat-messages" id="chatMessages">
         <div class="message agent">
           <div class="meta-tag">🤖 Root HR Orchestrator</div>
-          안녕하세요! Altostrat 엔터프라이즈 HR AI 에이전트입니다. 상단의 <b>Google IAP Login</b> 버튼을 통해 본인의 구글 사내 계정(이메일)으로 로그인하시면, 유저 전용 MCP 토큰 발급 및 실시간 연차/프로필/IT 티켓 조회가 동적으로 연동됩니다.
+          안녕하세요! Altostrat 엔터프라이즈 HR AI 에이전트입니다. 구글 IAP 로그인 후 아래의 3가지 서브 에이전트 기능을 직접 테스트해보실 수 있습니다:
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+            <button onclick="sendQuickPrompt('회사 연차 휴가 규정이 어떻게 되나요?')" style="background: rgba(255,255,255,0.1); border: 1px solid var(--panel-border); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">📚 연차 규정 문의 (Policy RAG)</button>
+            <button onclick="sendQuickPrompt('내 남은 연차 일수 조회해줘')" style="background: rgba(255,255,255,0.1); border: 1px solid var(--panel-border); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🏖️ 잔여 연차 조회 (WorkWeek HCM)</button>
+            <button onclick="sendQuickPrompt('내 IT 지원 티켓 목록 보여줘')" style="background: rgba(255,255,255,0.1); border: 1px solid var(--panel-border); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🎫 IT 티켓 목록 (ServiceImmediately ITSM)</button>
+          </div>
         </div>
       </div>
       <div class="chat-input-area">
@@ -436,8 +443,13 @@
       <p>구글 사내 계정 이메일을 입력하면, 백엔드에서 <code>POST /api/mcp-tokens</code>를 호출하여 해당 사용자 전용 PAT 토큰(X-MCP-Token)을 즉시 발급하고 에이전트에 세팅합니다.</p>
       
       <div class="input-group">
-        <label for="emailInput">Google User Email</label>
-        <input type="email" class="form-input" id="emailInput" placeholder="예: user@google.com, inhyep@google.com, dulee@google.com">
+        <label for="emailInput">Google User Email (필수)</label>
+        <input type="email" class="form-input" id="emailInput" placeholder="예: donguk@google.com, dulee@google.com">
+      </div>
+
+      <div class="input-group">
+        <label for="empIdInput">Employee ID (선택 - 본인 사번)</label>
+        <input type="text" class="form-input" id="empIdInput" placeholder="예: 본인 사번 (비워두면 자동 조회)">
       </div>
 
       <button class="btn-block" onclick="performLogin()">Google 계정으로 로그인</button>
@@ -461,6 +473,8 @@
 
     async function performLogin() {
       const email = document.getElementById('emailInput').value.trim();
+      const empId = document.getElementById('empIdInput').value.trim();
+
       if (!email || !email.includes('@')) {
         alert('올바른 구글 이메일 주소를 입력해 주세요.');
         return;
@@ -470,7 +484,7 @@
         const resp = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email })
+          body: JSON.stringify({ email: email, employee_id: empId })
         });
         const data = await resp.json();
 
@@ -498,14 +512,33 @@
       }
     }
 
-    function appendMessage(sender, text) {
+    function sendQuickPrompt(promptText) {
+      if (!currentSession.email) {
+        openModal();
+        return;
+      }
+      document.getElementById('chatInput').value = promptText;
+      sendMessage();
+    }
+
+    function appendMessage(sender, text, authorName) {
       const messagesContainer = document.getElementById('chatMessages');
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${sender}`;
       
+      let badgeLabel = '🤖 Root HR Orchestrator';
+      if (sender === 'user') {
+        badgeLabel = '👤 User';
+      } else if (authorName) {
+        if (authorName.includes('policy')) badgeLabel = '📚 Policy RAG Agent';
+        else if (authorName.includes('workweek')) badgeLabel = '🏖️ WorkWeek HCM Agent';
+        else if (authorName.includes('service') || authorName.includes('itsm')) badgeLabel = '🎫 ServiceImmediately ITSM Agent';
+        else badgeLabel = `🤖 ${authorName}`;
+      }
+      
       const metaDiv = document.createElement('div');
       metaDiv.className = 'meta-tag';
-      metaDiv.innerHTML = sender === 'user' ? '👤 User' : '🤖 Root HR Orchestrator';
+      metaDiv.innerHTML = badgeLabel;
       
       const textDiv = document.createElement('div');
       textDiv.innerHTML = text.replace(/\n/g, '<br>');
@@ -526,6 +559,8 @@
         return;
       }
 
+      const activeToken = currentSession.token;
+
       appendMessage('user', msg);
       input.value = '';
 
@@ -535,11 +570,13 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: msg,
-            email: currentSession.email
+            email: currentSession.email,
+            employee_id: currentSession.employeeId,
+            mcp_token: activeToken
           })
         });
         const data = await resp.json();
-        appendMessage('agent', data.reply || '응답을 받았습니다.');
+        appendMessage('agent', data.reply || '응답을 받았습니다.', data.author);
       } catch (err) {
         appendMessage('agent', '⚠️ 오류가 발생했습니다: ' + err.message);
       }

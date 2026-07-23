@@ -1,0 +1,32 @@
+# Environment & Virtual Environments
+.env
+*.env
+.venv/
+env/
+venv/
+
+# Local Databases & Sessions
+agent/.adk/
+*.db
+*.sqlite
+*.sqlite3
+
+# Python Cache & Bytecode
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Agent & IDE Configurations
+.agent/
+.agents/
+.gemini/
+.idea/
+.vscode/
+
+# Logs & Temporary Data
+*.log
+*.tmp
+*.swp
+.DS_Store

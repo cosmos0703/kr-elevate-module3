@@ -47,3 +47,54 @@ hr_root_orchestrator = Agent(
     before_agent_callback=init_user_id_callback,
 )
 
+
+# ============================================================================
+# Synchronous & Asynchronous Chat Handlers for FastAPI Server & Web UI
+# ============================================================================
+from typing import Optional, Dict, Any
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
+_session_service = InMemorySessionService()
+_runner = Runner(agent=hr_root_orchestrator, app_name="hr_enterprise_app", session_service=_session_service)
+_user_session_map: Dict[str, Any] = {}
+
+
+from agent.tools.workweek_mcp import resolve_employee_id
+
+async def handle_root_chat_async(user_message: str, email: Optional[str] = None, employee_id: Optional[str] = None) -> Dict[str, Any]:
+    resolved_id = employee_id or resolve_employee_id(email=email)
+    user_key = email or resolved_id
+    if user_key not in _user_session_map:
+        session = await _session_service.create_session(app_name="hr_enterprise_app", user_id=resolved_id)
+        _user_session_map[user_key] = session
+
+    session = _user_session_map[user_key]
+    msg = types.Content(role="user", parts=[types.Part.from_text(text=user_message)])
+    
+    reply_text = ""
+    author = "hr_root_orchestrator"
+    
+    async for event in _runner.run_async(user_id=resolved_id, session_id=session.id, new_message=msg):
+        if event.content and event.content.parts:
+            for part in event.content.parts:
+                if hasattr(part, "text") and part.text:
+                    reply_text = part.text
+                    if event.author:
+                        author = event.author
+
+    return {
+        "reply": reply_text or "요청이 정상 처리되었습니다.",
+        "author": author,
+        "status": "SUCCESS"
+    }
+
+
+def handle_root_chat(user_message: str, email: Optional[str] = None, employee_id: Optional[str] = None) -> Dict[str, Any]:
+    import asyncio
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(lambda: asyncio.run(handle_root_chat_async(user_message, email=email, employee_id=employee_id)))
+        return future.result()
+
