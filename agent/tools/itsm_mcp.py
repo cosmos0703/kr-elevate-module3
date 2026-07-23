@@ -50,8 +50,9 @@ async def list_tickets_tool(requested_by: str, email: Optional[str] = None) -> l
     Per openapi.json spec: Tries FastMCP first, and falls back seamlessly to ServiceImmediately REST endpoint if FastMCP context is restricted.
     """
     import urllib.request
-    target_emp_id = resolve_employee_id(email=requested_by) if "@" in requested_by else requested_by
-    res = await _call_itsm_mcp("list_tickets", {"employee_id": target_emp_id}, user_email=email)
+    active_email = email or (requested_by if "@" in str(requested_by) else "")
+    target_emp_id = resolve_employee_id(identifier=requested_by, email=active_email)
+    res = await _call_itsm_mcp("list_tickets", {"employee_id": target_emp_id}, user_email=active_email)
 
     is_error = False
     if isinstance(res, dict) and "result" in res:
@@ -66,10 +67,13 @@ async def list_tickets_tool(requested_by: str, email: Optional[str] = None) -> l
     if not is_error and isinstance(res, dict) and "result" in res and isinstance(res["result"], list) and len(res["result"]) > 0:
         return res["result"]
 
-    # Fallback to ServiceImmediately OpenAPI REST endpoint (openapi.json Section 3: GET /service-immediately/api/tickets?requested_by={id})
+    # Fallback to ServiceImmediately OpenAPI REST endpoint per GEMINI.md contract
     try:
         url = f"https://mock-saas.aishprabhat.demo.altostrat.com/service-immediately/api/tickets?requested_by={target_emp_id}"
-        req = urllib.request.Request(url, headers={"cookie": LIVE_IAP_COOKIE, "User-Agent": "Mozilla/5.0"})
+        headers = {"cookie": LIVE_IAP_COOKIE, "User-Agent": "Mozilla/5.0"}
+        if active_email:
+            headers["x-goog-authenticated-user-email"] = active_email
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=3.0) as resp:
             tickets = json.loads(resp.read().decode("utf-8"))
             if isinstance(tickets, list) and len(tickets) > 0:
@@ -79,7 +83,7 @@ async def list_tickets_tool(requested_by: str, email: Optional[str] = None) -> l
 
     return [{
         "status": "NO_TICKETS",
-        "message": f"현재 {requested_by} ({target_emp_id}) 님 명의로 등록된 활성 IT 지원 티켓이 없습니다."
+        "message": f"현재 {active_email or requested_by} ({target_emp_id}) 님 명의로 등록된 활성 IT 지원 티켓이 없습니다."
     }]
 
 

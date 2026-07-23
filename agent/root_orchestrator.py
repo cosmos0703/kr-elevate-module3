@@ -64,13 +64,21 @@ _user_session_map: Dict[str, Any] = {}
 from agent.tools.workweek_mcp import resolve_employee_id
 
 async def handle_root_chat_async(user_message: str, email: Optional[str] = None, employee_id: Optional[str] = None) -> Dict[str, Any]:
-    resolved_id = employee_id or resolve_employee_id(email=email)
-    user_key = email or resolved_id
+    active_email = email or ""
+    resolved_id = (employee_id if employee_id and employee_id.upper().startswith("EMP-") else None) or resolve_employee_id(email=active_email)
+    user_key = active_email or resolved_id
+
     if user_key not in _user_session_map:
         session = await _session_service.create_session(app_name="hr_enterprise_app", user_id=resolved_id)
         _user_session_map[user_key] = session
 
     session = _user_session_map[user_key]
+    # Bind live user session state per GEMINI.md contract
+    session.state["user_id"] = resolved_id
+    session.state["employee_id"] = resolved_id
+    if active_email:
+        session.state["authenticated_user_email"] = active_email
+
     msg = types.Content(role="user", parts=[types.Part.from_text(text=user_message)])
     
     reply_text = ""

@@ -51,9 +51,6 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
-        query = urllib.parse.parse_qs(parsed.query)
-        email_param = query.get("email", [""])[0] or None
-        emp_id = resolve_employee_id(email=email_param) if email_param else "UNKNOWN"
 
         if path in ["/", "/chat", "/index.html", "/static/index.html"]:
             self.send_response(200)
@@ -63,6 +60,10 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
                 with open(STATIC_INDEX, "r", encoding="utf-8") as f:
                     self.wfile.write(f.read().encode("utf-8"))
             return
+
+        query = urllib.parse.parse_qs(parsed.query)
+        email_param = query.get("email", [""])[0] or None
+        emp_id = resolve_employee_id(email=email_param) if email_param else "UNKNOWN"
 
         if path == "/api/workweek/balances":
             self.send_json(get_employee_balances_tool(emp_id, email=email_param))
@@ -115,6 +116,7 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         if path in ["/api/agent/chat", "/api/workweek/chat"]:
+            from agent.tools.model_armor import inspect_prompt_with_model_armor
             email_val = data.get("email")
             emp_id_val = data.get("employee_id")
             mcp_token_val = data.get("mcp_token")
@@ -125,7 +127,21 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
                     email_val = owner_email
                     emp_id_val = resolve_employee_id(email=owner_email)
             msg = data.get("message", "")
+
+            # GCP Model Armor Inspection (Template: projects/pe-kor-trainer/locations/us-central1/templates/test-pe-kor)
+            armor_res = inspect_prompt_with_model_armor(msg)
+            if not armor_res.get("allowed"):
+                self.send_json({
+                    "status": "BLOCKED_BY_MODEL_ARMOR",
+                    "author": "GCP Model Armor Security",
+                    "reply": f"🚨 **Security Violation Blocked by GCP Model Armor**\n- **Template**: `projects/pe-kor-trainer/locations/us-central1/templates/test-pe-kor`\n- **Reason**: {armor_res.get('reason')}",
+                    "model_armor": armor_res
+                })
+                return
+
             res = handle_root_chat(msg, email=email_val, employee_id=emp_id_val)
+            if isinstance(res, dict):
+                res["model_armor"] = armor_res
             self.send_json(res)
             return
 

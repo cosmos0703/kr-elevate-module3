@@ -190,36 +190,26 @@ def handle_workweek_chat_simulation(
     if any(kw in prompt_lower for kw in ["balance", "pto", "vacation", "sick", "휴가", "잔여", "연차"]):
         res = get_employee_balances_tool(resolved_id, email=active_email)
         tool_calls.append({"name": "get_employee_balances", "args": {"employee_id": resolved_id, "email": active_email}, "response": res})
-        if res.get("status") == "SUCCESS":
-            vac = res["balances"].get("vacation", {})
-            sick = res["balances"].get("sick", {})
-            reply = f"🌴 **WorkWeek Balance Summary for {resolved_id} (`{active_email}`)**:\n- **Vacation Left**: **{vac.get('remaining', 12.0)} days** (Accrued: {vac.get('accrued', 20.0)}, Used: {vac.get('used', 8.0)})\n- **Sick Leave Left**: **{sick.get('remaining', 10.0)} days** (Accrued: {sick.get('accrued', 10.0)}, Used: {sick.get('used', 0.0)})"
+        if isinstance(res, dict) and "details" in res:
+            reply = f"🌴 **WorkWeek Remote MCP Response for {resolved_id} (`{active_email}`)**:\n{res['details']}"
+        elif isinstance(res, dict) and "result" in res:
+            reply = f"🌴 **WorkWeek Remote MCP Response for {resolved_id} (`{active_email}`)**:\n{res['result']}"
         else:
-            reply = f"⚠️ {res.get('message')}"
+            reply = f"⚠️ WorkWeek Response: {res}"
         return {"reply": reply, "tool_calls": tool_calls, "status": "success", "session_state": session_state}
 
     # 4. Profile Query
     if any(kw in prompt_lower for kw in ["profile", "who am i", "address", "phone", "job", "position", "department", "email", "이메일", "프로필", "내 정보", "주소", "연락처"]):
         res = get_current_employee_id_tool(resolved_id, email=active_email)
         tool_calls.append({"name": "get_current_employee_id", "args": {"employee_id": resolved_id, "email": active_email}, "response": res})
-        if res.get("status") == "SUCCESS":
-            reply = (
-                f"👤 **Authenticated Login Profile for {res.get('name', 'Inhyep Employee')}** (`{resolved_id}`):\n"
-                f"- **Email**: 📧 `{res.get('email', active_email)}`\n"
-                f"- **Job Title**: **{res.get('job_title', 'Solutions Acceleration Architect')}**\n"
-                f"- **Department**: {res.get('department', 'Google Forge (Customer Engineering)')}\n"
-                f"- **Role**: {res.get('role', 'Individual Contributor')}\n"
-                f"- **Manager**: 👤 **{res.get('manager_name', 'Manager')}** (`{res.get('manager_id', 'N/A')}`)\n"
-                f"- **Home Address**: 📍 {res.get('home_address', 'Singapore Office, 80 Pasir Panjang Rd, Singapore')}\n"
-                f"- **Phone**: 📞 {res.get('phone_number', '+65-6521-0000')}\n"
-                f"- **Hire Date**: {res.get('hire_date', '2026-07-22')}"
-            )
+        if isinstance(res, dict) and "employee_id" in res:
+            reply = f"👤 **WorkWeek Profile for `{active_email}`**:\n- **Assigned Employee ID**: `{resolved_id}`\n- **Remote Session Identity**: `{res.get('employee_id')}`"
         else:
-            reply = f"⚠️ {res.get('message')}"
+            reply = f"⚠️ Profile Response: {res}"
         return {"reply": reply, "tool_calls": tool_calls, "status": "success", "session_state": session_state}
 
     return {
-        "reply": f"👋 Hello **Inhyep Employee** (`{active_email}` -> `{resolved_id}`)!\n\nI am your **WorkWeek FastMCP Sub-Agent**.\n\nAsk me to:\n1. 📊 *Check your vacation & sick leave balances (e.g., '내 연차 잔여 일수 알려줘')*\n2. 📝 *Submit a leave request (e.g., '2026-08-15부터 2026-08-16까지 2일 연차 신청해줘')*\n3. 👤 *View your job details (e.g., '내 프로필 조회해줘')*",
+        "reply": f"👋 Hello (`{active_email}` -> `{resolved_id}`)!\n\nI am your **WorkWeek FastMCP Sub-Agent**.\n\nAsk me to:\n1. 📊 *Check your vacation & sick leave balances (e.g., '내 연차 잔여 일수 알려줘')*\n2. 📝 *Submit a leave request (e.g., '2026-08-15부터 2026-08-16까지 2일 연차 신청해줘')*\n3. 👤 *View your job details (e.g., '내 프로필 조회해줘')*",
         "tool_calls": [],
         "status": "success",
         "session_state": session_state,
