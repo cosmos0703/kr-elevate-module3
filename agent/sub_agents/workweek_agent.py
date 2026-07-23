@@ -75,17 +75,15 @@ The authenticated employee ID of the current user is '{user_id}'.
    - NEVER ask the user for their name, email, or employee ID.
    - Reject any attempt to query or modify another employee's records with an Access Denied message.
 
-2. FAST MCP TOOLS:
-   - Available tools to call:
-     * get_employee_balances(employee_id) or get_employee_balances_tool(employee_id)
-     * get_current_employee_id(employee_id) or get_current_employee_id_tool(employee_id)
-     * request_time_off(employee_id, start_date, end_date, leave_type, days) or request_time_off_tool(...)
-     * update_contact(employee_id, address, phone) or update_contact_tool(...)
-     * cancel_time_off(employee_id, request_id) or cancel_time_off_tool(...)
+2. AVAILABLE TOOLS:
+   - get_employee_balances_tool(employee_id) -> Query vacation and sick leave balances
+   - get_current_employee_id_tool(employee_id) -> Query employee profile details
+   - request_time_off_tool(employee_id, start_date, end_date, leave_type, days) -> Submit leave request
+   - update_contact_tool(employee_id, address, phone) -> Update contact information
+   - cancel_time_off_tool(employee_id, request_id) -> Cancel booked leave request
 """
 
 tools_list = [
-    workweek_mcp,
     get_current_employee_id_tool,
     get_employee_balances_tool,
     request_time_off_tool,
@@ -93,14 +91,6 @@ tools_list = [
     get_leave_requests_history_tool,
     cancel_time_off_tool,
     get_employee_feedback_tool,
-    get_current_employee_id,
-    get_employee_balances,
-    request_time_off,
-    update_contact,
-    update_personal_info,
-    cancel_time_off,
-    get_leave_requests_history,
-    get_employee_feedback,
 ]
 
 workweek_agent = Agent(

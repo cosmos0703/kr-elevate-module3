@@ -32,10 +32,6 @@ itsm_agent = Agent(
         list_tickets_tool,
         update_ticket_status_tool,
         add_ticket_comment_tool,
-        create_ticket,
-        list_tickets,
-        update_ticket_status,
-        add_ticket_comment,
     ],
     before_agent_callback=init_user_id_callback,
     instruction="""
