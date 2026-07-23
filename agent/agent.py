@@ -1,8 +1,8 @@
 """
 ADK Agent Entrypoint for agents-cli playground.
-Exposes policy_rag_agent as root_agent for testing.
+Exposes hr_root_orchestrator as root_agent.
 """
-from agent.sub_agents.policy_rag_agent import policy_rag_agent
+from agent.root_orchestrator import hr_root_orchestrator
 
-# Expose policy_rag_agent as root_agent so agents-cli playground loads it directly
-root_agent = policy_rag_agent
+# Expose hr_root_orchestrator as root_agent so agents-cli playground loads the orchestrator with all 3 sub-agents
+root_agent = hr_root_orchestrator
