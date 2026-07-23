@@ -430,3 +430,15 @@ def get_employee_feedback_tool(employee_id: Optional[str] = None, email: Optiona
         "employee_id": target_id,
         "feedback": emp["feedback"],
     }
+
+
+# Tool function aliases matching both MCP and local naming conventions
+get_current_employee_id = get_current_employee_id_tool
+get_employee_balances = get_employee_balances_tool
+request_time_off = request_time_off_tool
+update_contact = update_contact_tool
+update_personal_info = update_contact_tool
+cancel_time_off = cancel_time_off_tool
+get_leave_requests_history = get_leave_requests_history_tool
+get_employee_feedback = get_employee_feedback_tool
+

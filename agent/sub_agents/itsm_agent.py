@@ -10,11 +10,18 @@ from agent.tools.itsm_mcp import (
     create_ticket_tool,
     list_tickets_tool,
     update_ticket_status_tool,
-    add_ticket_comment_tool
+    add_ticket_comment_tool,
+    create_ticket,
+    list_tickets,
+    update_ticket_status,
+    add_ticket_comment,
 )
 
 async def init_user_id_callback(callback_context) -> None:
-    callback_context.state["user_id"] = callback_context.user_id
+    user_id = getattr(callback_context, "user_id", None) or callback_context.state.get("user_id") or callback_context.state.get("employee_id")
+    if user_id:
+        callback_context.state["user_id"] = user_id
+        callback_context.state["employee_id"] = user_id
 
 itsm_agent = Agent(
     name="service_immediately_agent",
@@ -24,7 +31,11 @@ itsm_agent = Agent(
         create_ticket_tool,
         list_tickets_tool,
         update_ticket_status_tool,
-        add_ticket_comment_tool
+        add_ticket_comment_tool,
+        create_ticket,
+        list_tickets,
+        update_ticket_status,
+        add_ticket_comment,
     ],
     before_agent_callback=init_user_id_callback,
     instruction="""

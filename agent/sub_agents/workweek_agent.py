@@ -17,6 +17,14 @@ from agent.tools.workweek_mcp import (
     get_leave_requests_history_tool,
     cancel_time_off_tool,
     get_employee_feedback_tool,
+    get_current_employee_id,
+    get_employee_balances,
+    request_time_off,
+    update_contact,
+    update_personal_info,
+    cancel_time_off,
+    get_leave_requests_history,
+    get_employee_feedback,
     workweek_mcp,
     WorkWeekFastMcpClient,
 )
@@ -36,6 +44,7 @@ except ImportError:
                 tools: Optional[List[Any]] = None,
                 instruction: str = "",
                 sub_agents: Optional[List[Any]] = None,
+                before_agent_callback: Optional[Any] = None,
             ):
                 self.name = name
                 self.model = model
@@ -43,15 +52,17 @@ except ImportError:
                 self.tools = tools or []
                 self.instruction = instruction
                 self.sub_agents = sub_agents or []
+                self.before_agent_callback = before_agent_callback
 
             def __repr__(self) -> str:
                 return f"<Agent name={self.name!r} model={self.model!r} tools_count={len(self.tools)}>"
 
 
 async def init_user_id_callback(callback_context) -> None:
-    user_id = getattr(callback_context, "user_id", None) or callback_context.state.get("user_id") or "EMP-26"
-    callback_context.state["user_id"] = user_id
-    callback_context.state["employee_id"] = user_id
+    user_id = getattr(callback_context, "user_id", None) or callback_context.state.get("user_id") or callback_context.state.get("employee_id")
+    if user_id:
+        callback_context.state["user_id"] = user_id
+        callback_context.state["employee_id"] = user_id
 
 WORKWEEK_AGENT_INSTRUCTION = """You are the WorkWeek HCM Sub-Agent.
 You handle employee profile lookups, PTO balance queries, leave booking, personal contact updates, and compensating rollback cancellations.
@@ -65,15 +76,16 @@ The authenticated employee ID of the current user is '{user_id}'.
    - Reject any attempt to query or modify another employee's records with an Access Denied message.
 
 2. FAST MCP TOOLS:
-   - Tools available:
-     * get_current_employee_id_tool(employee_id)
-     * get_employee_balances_tool(employee_id)
-     * request_time_off_tool(employee_id, start_date, end_date, leave_type, days)
-     * update_contact_tool(employee_id, address, phone)
-     * cancel_time_off_tool(employee_id, request_id)
+   - Available tools to call:
+     * get_employee_balances(employee_id) or get_employee_balances_tool(employee_id)
+     * get_current_employee_id(employee_id) or get_current_employee_id_tool(employee_id)
+     * request_time_off(employee_id, start_date, end_date, leave_type, days) or request_time_off_tool(...)
+     * update_contact(employee_id, address, phone) or update_contact_tool(...)
+     * cancel_time_off(employee_id, request_id) or cancel_time_off_tool(...)
 """
 
-tools_list = [workweek_mcp] if workweek_mcp is not None else [
+tools_list = [
+    workweek_mcp,
     get_current_employee_id_tool,
     get_employee_balances_tool,
     request_time_off_tool,
@@ -81,6 +93,14 @@ tools_list = [workweek_mcp] if workweek_mcp is not None else [
     get_leave_requests_history_tool,
     cancel_time_off_tool,
     get_employee_feedback_tool,
+    get_current_employee_id,
+    get_employee_balances,
+    request_time_off,
+    update_contact,
+    update_personal_info,
+    cancel_time_off,
+    get_leave_requests_history,
+    get_employee_feedback,
 ]
 
 workweek_agent = Agent(

@@ -83,3 +83,10 @@ async def add_ticket_comment_tool(ticket_id: str, author: str, comment: str) -> 
         "author": author,
         "comment": comment
     })
+
+# Tool function aliases matching both MCP and local naming conventions
+list_tickets = list_tickets_tool
+create_ticket = create_ticket_tool
+update_ticket_status = update_ticket_status_tool
+add_ticket_comment = add_ticket_comment_tool
+

@@ -32,9 +32,10 @@ ROUTING & ORCHESTRATION RULES:
 """
 
 async def init_user_id_callback(callback_context) -> None:
-    user_id = getattr(callback_context, "user_id", None) or callback_context.state.get("user_id") or "EMP-26"
-    callback_context.state["user_id"] = user_id
-    callback_context.state["employee_id"] = user_id
+    user_id = getattr(callback_context, "user_id", None) or callback_context.state.get("user_id") or callback_context.state.get("employee_id")
+    if user_id:
+        callback_context.state["user_id"] = user_id
+        callback_context.state["employee_id"] = user_id
 
 hr_root_orchestrator = Agent(
     name="hr_root_orchestrator",
