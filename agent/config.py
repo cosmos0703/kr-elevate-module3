@@ -8,6 +8,12 @@ GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "pe-kor-trainer")
 GOOGLE_CLOUD_PROJECT_NUMBER = os.getenv("GOOGLE_CLOUD_PROJECT_NUMBER", "775423734296")
 GOOGLE_CLOUD_REGION = os.getenv("GOOGLE_CLOUD_REGION", "global")
 
+# Force GCP Project & Region into os.environ for Vertex AI / ADK SDK
+os.environ["GOOGLE_CLOUD_PROJECT"] = GOOGLE_CLOUD_PROJECT
+os.environ["GCP_PROJECT"] = GOOGLE_CLOUD_PROJECT
+os.environ["PROJECT_ID"] = GOOGLE_CLOUD_PROJECT
+os.environ["GOOGLE_CLOUD_REGION"] = GOOGLE_CLOUD_REGION
+
 # Model Configuration
 MODEL_NAME = os.getenv("MODEL_NAME", "gemini-3.5-flash")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
