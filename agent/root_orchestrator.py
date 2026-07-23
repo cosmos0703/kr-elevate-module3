@@ -2,7 +2,10 @@
 Root Orchestrator Agent Stub
 TODO: Assemble 3 sub-agents and complete cross-system routing & compensating transaction rollback rules.
 """
-from google.genai.agent import Agent
+try:
+    from google.adk import Agent
+except ImportError:
+    from google.genai.agent import Agent
 from agent.config import MODEL_NAME
 from agent.sub_agents import policy_rag_agent, workweek_agent, itsm_agent
 
