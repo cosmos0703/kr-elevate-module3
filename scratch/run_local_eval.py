@@ -30,8 +30,17 @@ async def list_tickets_tool(requested_by: str) -> list:
     ]
 
 agent.tools.itsm_mcp.list_tickets_tool = list_tickets_tool
+print(f"DEBUG: run_local_eval.py monkeypatched list_tickets_tool = {list_tickets_tool}", flush=True)
+print(f"DEBUG: run_local_eval.py module list_tickets_tool = {agent.tools.itsm_mcp.list_tickets_tool}", flush=True)
 
 from google.adk.evaluation.agent_evaluator import AgentEvaluator
+
+# Directly monkeypatch the itsm_agent's tool list since imports are already resolved
+from agent.sub_agents.itsm_agent import itsm_agent
+for i, tool in enumerate(itsm_agent.tools):
+    if getattr(tool, "__name__", "") == "list_tickets_tool":
+        itsm_agent.tools[i] = list_tickets_tool
+        print(f"DEBUG: Successfully monkeypatched list_tickets_tool inside itsm_agent.tools list!", flush=True)
 
 async def main():
     try:
