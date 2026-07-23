@@ -24,88 +24,10 @@ LIVE_IAP_COOKIE = os.environ.get(
 )
 
 # ============================================================================
-# Live Stateful Database & Cache (Real-time synchronized with remote SaaS)
+# Dynamic Stateful Cache (Real-time synchronized with remote SaaS API)
 # ============================================================================
 
-EMPLOYEE_DATABASE: Dict[str, Dict[str, Any]] = {
-    "EMP-26": {
-        "employee_id": "EMP-26",
-        "name": "Inhyep Employee",
-        "first_name": "Inhyep",
-        "last_name": "Employee",
-        "email": "inhyep@google.com",
-        "job_title": "Solutions Acceleration Architect",
-        "role": "Individual Contributor",
-        "department": "Google Forge (Customer Engineering)",
-        "hire_date": "2026-07-22",
-        "manager_id": "EMP-1",
-        "manager_name": "Vicky Falconer",
-        "home_address": "Singapore Office, 80 Pasir Panjang Rd, Singapore",
-        "phone_number": "+65-6521-0000",
-        "location": "Singapore",
-        "work_status": "Regular",
-        "balances": {
-            "vacation": {"accrued": 20.0, "used": 12.0, "remaining": 8.0},
-            "sick": {"accrued": 10.0, "used": 0.0, "remaining": 10.0},
-            "personal": {"accrued": 5.0, "used": 1.0, "remaining": 4.0},
-            "parental": {"accrued": 60.0, "used": 0.0, "remaining": 60.0},
-        },
-        "requests": [],
-        "feedback": [
-            {"from": "Vicky Falconer", "date": "2026-07-20", "message": "Outstanding work on the agent architecture demo!"}
-        ],
-    },
-    "EMP-1001": {
-        "employee_id": "EMP-1001",
-        "name": "Inhye Park",
-        "first_name": "Inhye",
-        "last_name": "Park",
-        "email": "inhyep@gcp.altostrat.com",
-        "job_title": "Lead Solution Architect",
-        "role": "Lead Solution Architect",
-        "department": "Engineering / Cloud Solutions",
-        "hire_date": "2026-07-22",
-        "manager_id": "EMP-9000",
-        "manager_name": "Alex Vance",
-        "home_address": "123 Tech Boulevard, San Jose, CA",
-        "phone_number": "+1 (555) 345-6789",
-        "location": "San Jose, CA",
-        "work_status": "Remote",
-        "balances": {
-            "vacation": {"accrued": 15.0, "used": 5.0, "remaining": 10.0},
-            "sick": {"accrued": 10.0, "used": 2.0, "remaining": 8.0},
-            "personal": {"accrued": 5.0, "used": 1.0, "remaining": 4.0},
-            "parental": {"accrued": 60.0, "used": 0.0, "remaining": 60.0},
-        },
-        "requests": [],
-        "feedback": [],
-    },
-    "EMP-1004": {
-        "employee_id": "EMP-1004",
-        "name": "Donguk Lee",
-        "first_name": "Donguk",
-        "last_name": "Lee",
-        "email": "donguk@google.com",
-        "job_title": "Cloud Architect",
-        "role": "Individual Contributor",
-        "department": "Google Cloud",
-        "hire_date": "2026-07-22",
-        "manager_id": "EMP-1",
-        "manager_name": "Vicky Falconer",
-        "home_address": "Seoul Office, Gangnam-gu, Seoul",
-        "phone_number": "+82-10-1234-5678",
-        "location": "Seoul",
-        "work_status": "Hybrid",
-        "balances": {
-            "vacation": {"accrued": 18.0, "used": 3.0, "remaining": 15.0},
-            "sick": {"accrued": 10.0, "used": 1.0, "remaining": 9.0},
-            "personal": {"accrued": 5.0, "used": 0.0, "remaining": 5.0},
-            "parental": {"accrued": 60.0, "used": 0.0, "remaining": 60.0},
-        },
-        "requests": [],
-        "feedback": [],
-    }
-}
+EMPLOYEE_DATABASE: Dict[str, Dict[str, Any]] = {}
 
 _REQ_COUNTER = 1000
 
@@ -208,14 +130,6 @@ def resolve_employee_id(identifier: Optional[str] = None, email: Optional[str] =
 
     if target.upper().startswith("EMP-") or target.upper().startswith("EMP_"):
         return target.upper().replace("_", "-")
-
-    target_lower = target.lower()
-    if "1001" in target_lower or "altostrat" in target_lower or "inhye.park" in target_lower:
-        return "EMP-1001"
-    if "1004" in target_lower or "donguk" in target_lower or "dulee" in target_lower:
-        return "EMP-1004"
-    if "26" in target_lower or "inhyep@google.com" in target_lower or target_lower == "inhyep":
-        return "EMP-26"
 
     email_param = target if "@" in target else (email or None)
     remote = _client.request("employees/current/profile", method="GET", email=email_param)
