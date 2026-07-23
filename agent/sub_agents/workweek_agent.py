@@ -48,23 +48,29 @@ except ImportError:
                 return f"<Agent name={self.name!r} model={self.model!r} tools_count={len(self.tools)}>"
 
 
+async def init_user_id_callback(callback_context) -> None:
+    user_id = getattr(callback_context, "user_id", None) or callback_context.state.get("user_id") or "EMP-26"
+    callback_context.state["user_id"] = user_id
+    callback_context.state["employee_id"] = user_id
+
 WORKWEEK_AGENT_INSTRUCTION = """You are the WorkWeek HCM Sub-Agent.
 You handle employee profile lookups, PTO balance queries, leave booking, personal contact updates, and compensating rollback cancellations.
 
+The authenticated employee ID of the current user is '{user_id}'.
+
 === OPERATIONAL & GOVERNANCE RULES ===
 1. IDENTITY BRIDGING & LOCK:
-   - Always bind employee_id to the authenticated user ID/email from context (e.g. 'inhyep@google.com' -> 'EMP-26').
+   - Always call tools using employee_id set to '{user_id}'.
+   - NEVER ask the user for their name, email, or employee ID.
    - Reject any attempt to query or modify another employee's records with an Access Denied message.
 
-2. FAST MCP TOOLS (Option A: Streamable HTTP MCP Server):
-   - Server URL: https://mock-saas.aishprabhat.demo.altostrat.com/work-week/mcp/
-   - Header: X-MCP-Token
+2. FAST MCP TOOLS:
    - Tools available:
-     * get_current_employee_id()
-     * get_employee_balances(employee_id)
-     * request_time_off(employee_id, start_date, end_date, leave_type, days)
-     * update_personal_info(employee_id, address, phone)
-     * cancel_time_off(employee_id, request_id)
+     * get_current_employee_id_tool(employee_id)
+     * get_employee_balances_tool(employee_id)
+     * request_time_off_tool(employee_id, start_date, end_date, leave_type, days)
+     * update_contact_tool(employee_id, address, phone)
+     * cancel_time_off_tool(employee_id, request_id)
 """
 
 tools_list = [workweek_mcp] if workweek_mcp is not None else [
@@ -83,6 +89,7 @@ workweek_agent = Agent(
     description="Handles WorkWeek HCM transactions: PTO balances, personal contact updates, and leave booking.",
     instruction=WORKWEEK_AGENT_INSTRUCTION,
     tools=tools_list,
+    before_agent_callback=init_user_id_callback,
 )
 
 rest_client = WorkWeekFastMcpClient()

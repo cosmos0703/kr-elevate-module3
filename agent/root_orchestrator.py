@@ -31,11 +31,17 @@ ROUTING & ORCHESTRATION RULES:
 - Maintain clear, professional, and helpful communication with the employee at all times.
 """
 
+async def init_user_id_callback(callback_context) -> None:
+    user_id = getattr(callback_context, "user_id", None) or callback_context.state.get("user_id") or "EMP-26"
+    callback_context.state["user_id"] = user_id
+    callback_context.state["employee_id"] = user_id
+
 hr_root_orchestrator = Agent(
     name="hr_root_orchestrator",
     model=MODEL_NAME,
     description="Main HR Orchestrator routing user intents and executing cross-system multi-step workflows.",
     sub_agents=[policy_rag_agent, workweek_agent, itsm_agent],
     instruction=ROOT_ORCHESTRATOR_INSTRUCTION,
+    before_agent_callback=init_user_id_callback,
 )
 
