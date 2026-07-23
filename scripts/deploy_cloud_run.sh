@@ -39,6 +39,14 @@ gcloud run deploy "${SERVICE_NAME}" \
     --port=8080 \
     --project="${PROJECT_ID}"
 
+# 4. Grant public unauthenticated access (allUsers -> roles/run.invoker)
+echo "🔓 Granting public unauthenticated access (roles/run.invoker) to Cloud Run..."
+gcloud run services add-iam-policy-binding "${SERVICE_NAME}" \
+    --region="${REGION}" \
+    --member="allUsers" \
+    --role="roles/run.invoker" \
+    --project="${PROJECT_ID}" || true
+
 echo "========================================================================="
 echo "✅ Cloud Run Deployment Completed Successfully on ${PROJECT_ID}!"
 echo "========================================================================="
