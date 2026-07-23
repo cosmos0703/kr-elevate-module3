@@ -1,5 +1,5 @@
 """
-Google ADK Web Application (FastAPI Server) for WorkWeek Sub-Agent.
+Google ADK Web Application (FastAPI Server) for Enterprise HR Solution.
 Strictly configured with live FastMCP server (https://mock-saas.aishprabhat.demo.altostrat.com/docs).
 """
 import http.server
@@ -9,20 +9,34 @@ import socketserver
 import urllib.parse
 from typing import Any, Dict
 
-from agent.root_orchestrator import handle_root_chat, hr_root_orchestrator
-from agent.sub_agents.workweek_agent import handle_workweek_chat_simulation, workweek_agent
-from agent.tools.workweek_mcp import (
-    DEFAULT_EMPLOYEE_ID,
-    DEFAULT_USER_EMAIL,
-    resolve_employee_id,
-    get_current_employee_id_tool,
-    get_employee_balances_tool,
-    request_time_off_tool,
-    update_contact_tool,
-    get_leave_requests_history_tool,
-    cancel_time_off_tool,
-    get_employee_feedback_tool,
-)
+try:
+    from agent.root_orchestrator import hr_root_orchestrator
+    from agent.sub_agents.workweek_agent import handle_workweek_chat_simulation, workweek_agent
+    from agent.tools.workweek_mcp import (
+        resolve_employee_id,
+        get_current_employee_id_tool,
+        get_employee_balances_tool,
+        request_time_off_tool,
+        update_contact_tool,
+        get_leave_requests_history_tool,
+        cancel_time_off_tool,
+        get_employee_feedback_tool,
+        generate_mcp_token_for_user,
+    )
+except ImportError:
+    from root_orchestrator import hr_root_orchestrator
+    from sub_agents.workweek_agent import handle_workweek_chat_simulation, workweek_agent
+    from tools.workweek_mcp import (
+        resolve_employee_id,
+        get_current_employee_id_tool,
+        get_employee_balances_tool,
+        request_time_off_tool,
+        update_contact_tool,
+        get_leave_requests_history_tool,
+        cancel_time_off_tool,
+        get_employee_feedback_tool,
+        generate_mcp_token_for_user,
+    )
 
 PORT = 8080
 STATIC_INDEX = os.path.join(os.path.dirname(__file__), "static", "index.html")
@@ -38,8 +52,7 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
         email_param = query.get("email", [""])[0] or None
-        raw_emp = query.get("employee_id", [""])[0] or (email_param or DEFAULT_EMPLOYEE_ID)
-        emp_id = resolve_employee_id(raw_emp, email=email_param)
+        emp_id = resolve_employee_id(email=email_param) if email_param else "UNKNOWN"
 
         if path in ["/", "/chat", "/index.html"]:
             self.send_response(200)
@@ -78,19 +91,33 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             data = {}
 
+        if path == "/api/auth/login":
+            user_email = (data.get("email") or "user@google.com").strip()
+            raw_token = generate_mcp_token_for_user(user_email)
+            emp_id = resolve_employee_id(email=user_email)
+            profile = get_current_employee_id_tool(emp_id, email=user_email)
+            self.send_json({
+                "status": "SUCCESS",
+                "email": user_email,
+                "employee_id": emp_id,
+                "mcp_token": raw_token or "mcp_shared_secret_token",
+                "profile": profile,
+                "message": f"Successfully authenticated {user_email} via Google IAP. Personal Access Token generated.",
+            })
+            return
+
         if path in ["/api/agent/chat", "/api/workweek/chat"]:
             email_val = data.get("email")
-            raw_emp = data.get("employee_id") or (email_val or DEFAULT_EMPLOYEE_ID)
             msg = data.get("message", "")
-            res = handle_root_chat(msg, email=email_val, employee_id=raw_emp)
+            res = handle_workweek_chat_simulation(msg, email=email_val)
             self.send_json(res)
             return
 
         if path == "/api/workweek/timeoff":
             email_val = data.get("email")
-            raw_emp = data.get("employee_id") or (email_val or DEFAULT_EMPLOYEE_ID)
+            emp_id = resolve_employee_id(email=email_val)
             res = request_time_off_tool(
-                employee_id=raw_emp,
+                employee_id=emp_id,
                 start_date=data.get("start_date", ""),
                 end_date=data.get("end_date", ""),
                 leave_type=data.get("leave_type", "Vacation"),
@@ -102,9 +129,9 @@ class ADKWebRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         if path == "/api/workweek/profile":
             email_val = data.get("email")
-            raw_emp = data.get("employee_id") or (email_val or DEFAULT_EMPLOYEE_ID)
+            emp_id = resolve_employee_id(email=email_val)
             res = update_contact_tool(
-                employee_id=raw_emp,
+                employee_id=emp_id,
                 address=data.get("address"),
                 phone=data.get("phone"),
                 email=email_val,

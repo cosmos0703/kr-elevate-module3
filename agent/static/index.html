@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Altostrat HR Agentic Portal (Google IAP Authentication)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: rgba(30, 41, 59, 0.7);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent: #8b5cf6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+      background: linear-gradient(135deg, #60a5fa, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--panel-border);
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--error);
+      box-shadow: 0 0 8px var(--error);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.active {
+      background-color: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .btn-login {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-login:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 2rem;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: var(--text-muted);
+    }
+
+    .info-val {
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .chat-container {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      height: 75vh;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--primary), #2563eb);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.agent {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+    }
+
+    .meta-tag {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .chat-input-area {
+      padding: 1.25rem;
+      border-top: 1px solid var(--panel-border);
+      display: flex;
+      gap: 0.75rem;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 0.875rem 1.25rem;
+      color: white;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .chat-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-send {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0 1.5rem;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-send:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: #1e293b;
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 440px;
+      padding: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .modal p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .input-group label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 0.875rem 1rem;
+      color: white;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .btn-block {
+      width: 100%;
+      padding: 0.875rem;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-block:hover {
+      opacity: 0.95;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span>✨ Altostrat Enterprise HR AI Agent</span>
+    </div>
+    <div class="user-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="userStatusText">Not Authenticated</span>
+      <button class="btn-login" id="loginBtn" onclick="openModal()">
+        <span>🔑 Google IAP Login</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="sidebar">
+      <div class="card">
+        <h3>Authenticated User Session</h3>
+        <div class="info-row">
+          <span class="info-label">IAP User Email</span>
+          <span class="info-val" id="dispEmail">None</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Employee ID</span>
+          <span class="info-val" id="dispEmpId">None</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">X-MCP-Token</span>
+          <span class="info-val" id="dispToken" style="font-family: monospace; font-size: 0.75rem;">None</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Multi-Agent System</h3>
+        <div class="info-row">
+          <span class="info-label">Root Agent</span>
+          <span class="info-val" style="color: #60a5fa;">hr_root_orchestrator</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">HR Policy RAG</span>
+          <span class="info-val">policy_rag_agent</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">WorkWeek HCM</span>
+          <span class="info-val">workweek_agent</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">ServiceImmediately</span>
+          <span class="info-val">service_immediately_agent</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-container">
+      <div class="chat-header">
+        <h2 style="font-size: 1.1rem; font-weight: 600;">Interactive HR Assistant Chat</h2>
+        <span style="font-size: 0.8rem; color: var(--success);">● Active Session</span>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="message agent">
+          <div class="meta-tag">🤖 Root HR Orchestrator</div>
+          안녕하세요! Altostrat 엔터프라이즈 HR AI 에이전트입니다. 상단의 <b>Google IAP Login</b> 버튼을 통해 본인의 구글 사내 계정(이메일)으로 로그인하시면, 유저 전용 MCP 토큰 발급 및 실시간 연차/프로필/IT 티켓 조회가 동적으로 연동됩니다.
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" class="chat-input" id="chatInput" placeholder="질문을 입력하세요 (예: 내 남은 연차 일수 얼마야?)" onkeypress="if(event.key==='Enter') sendMessage()">
+        <button class="btn-send" onclick="sendMessage()">보내기</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal">
+      <h2>Google IAP Login Simulation</h2>
+      <p>구글 사내 계정 이메일을 입력하면, 백엔드에서 <code>POST /api/mcp-tokens</code>를 호출하여 해당 사용자 전용 PAT 토큰(X-MCP-Token)을 즉시 발급하고 에이전트에 세팅합니다.</p>
+      
+      <div class="input-group">
+        <label for="emailInput">Google User Email</label>
+        <input type="email" class="form-input" id="emailInput" placeholder="예: user@google.com, inhyep@google.com, dulee@google.com">
+      </div>
+
+      <button class="btn-block" onclick="performLogin()">Google 계정으로 로그인</button>
+    </div>
+  </div>
+
+  <script>
+    let currentSession = {
+      email: null,
+      employeeId: null,
+      token: null
+    };
+
+    function openModal() {
+      document.getElementById('loginModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('loginModal').classList.remove('active');
+    }
+
+    async function performLogin() {
+      const email = document.getElementById('emailInput').value.trim();
+      if (!email || !email.includes('@')) {
+        alert('올바른 구글 이메일 주소를 입력해 주세요.');
+        return;
+      }
+
+      try {
+        const resp = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'SUCCESS') {
+          currentSession.email = data.email;
+          currentSession.employeeId = data.employee_id;
+          currentSession.token = data.mcp_token;
+
+          document.getElementById('dispEmail').innerText = data.email;
+          document.getElementById('dispEmpId').innerText = data.employee_id;
+          document.getElementById('dispToken').innerText = data.mcp_token.substring(0, 16) + '...';
+
+          document.getElementById('statusDot').classList.add('active');
+          document.getElementById('userStatusText').innerText = data.email;
+          document.getElementById('loginBtn').style.display = 'none';
+
+          closeModal();
+
+          appendMessage('agent', `🎉 <b>${data.email}</b> 님, 구글 IAP 인증이 완료되었습니다!<br>- 사번: <code>${data.employee_id}</code><br>- 발급된 MCP 토큰: <code>${data.mcp_token.substring(0, 20)}...</code><br><br>이제 무엇이든 물어보세요! (예: "내 연차 잔여 일수 조회해줘")`);
+        } else {
+          alert('로그인 실패: ' + data.message);
+        }
+      } catch (err) {
+        alert('서버통신 에러: ' + err.message);
+      }
+    }
+
+    function appendMessage(sender, text) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${sender}`;
+      
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'meta-tag';
+      metaDiv.innerHTML = sender === 'user' ? '👤 User' : '🤖 Root HR Orchestrator';
+      
+      const textDiv = document.createElement('div');
+      textDiv.innerHTML = text.replace(/\n/g, '<br>');
+
+      msgDiv.appendChild(metaDiv);
+      msgDiv.appendChild(textDiv);
+      messagesContainer.appendChild(msgDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      if (!currentSession.email) {
+        openModal();
+        return;
+      }
+
+      appendMessage('user', msg);
+      input.value = '';
+
+      try {
+        const resp = await fetch('/api/agent/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: msg,
+            email: currentSession.email
+          })
+        });
+        const data = await resp.json();
+        appendMessage('agent', data.reply || '응답을 받았습니다.');
+      } catch (err) {
+        appendMessage('agent', '⚠️ 오류가 발생했습니다: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
